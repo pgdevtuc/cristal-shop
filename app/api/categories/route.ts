@@ -5,14 +5,21 @@ import connectDB from "@/lib/database";
 export async function GET() {
   try {
     const db = await connectDB();
-    if (!db || !db.connection || !db.connection.db) {
-      throw new Error("Database connection failed");
+
+    if (!db) return NextResponse.json({ error: "Error de conexión a la base de datos" }, { status: 500 });
+    
+    if (db.connection.readyState !== 1) {
+      await new Promise((resolve) => {
+        db.connection.once('connected', resolve);
+      });
     }
+    if (!db.connection.db) {
+      throw new Error("Base de datos no disponible");
+    }
+
     const col = db.connection.db.collection(process.env.DATABSE_COLECCTION_PROD || "");
 
-    // Todas las categorías (no borrados), con conteo
     const rows = await col.aggregate([
-      { $match: { is_deleted: { $ne: true } } },
       { $group: { _id: "$category", count: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ]).toArray();

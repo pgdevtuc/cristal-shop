@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Edit, Trash2, Loader2 } from "lucide-react"
 import { Product } from "@/types/product"
+import { formatPrice } from "@/lib/formatPrice";
 
 interface ProductListProps {
   products: Product[]
@@ -87,11 +88,11 @@ export function ProductList({ products, loading, onEdit, onDelete }: ProductList
                 <div className="flex items-center space-x-2">
                   {product.salePrice && product.salePrice < product.price ? (
                     <>
-                      <span className="text-lg font-bold text-green-600">${product.salePrice.toFixed(2)}</span>
-                      <span className="text-sm text-gray-500 line-through">${product.price.toFixed(2)}</span>
+                      <span className="text-lg font-bold text-green-600">${formatPrice(product.salePrice)}</span>
+                      <span className="text-sm text-gray-500 line-through">${formatPrice(product.price)}</span>
                     </>
                   ) : (
-                    <span className="text-lg font-bold text-gray-900">${product.price.toFixed(2)}</span>
+                    <span className="text-lg font-bold text-gray-900">${formatPrice(product.price)}</span>
                   )}
                 </div>
                 <span className="text-sm text-gray-600">Stock: {product.stock}</span>

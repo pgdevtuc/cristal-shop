@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { ShoppingCart, Star, X } from "lucide-react"
 import { useCart } from "@/contexts/cart-context"
 import { useState } from "react"
-import { Product } from "@/types/product";
-
+import type { Product } from "@/types/product"
+import { formatPrice } from "@/lib/formatPrice"
 interface WhatsAppProductCardProps {
   product: Product
 }
@@ -26,13 +26,12 @@ export function WhatsAppProductCard({ product }: WhatsAppProductCardProps) {
   }
 
   // Mejorar la lógica de descuento
-  const hasDiscount = product.salePrice &&
-    product.salePrice > 0 &&
-    product.salePrice < product.price
+  const hasDiscount = product.salePrice && product.salePrice > 0 && product.salePrice < product.price
 
-  const discountPercentage = hasDiscount && product.salePrice && product.salePrice > 0
-    ? Math.round(((product.price - product.salePrice!) / product.price) * 100)
-    : null
+  const discountPercentage =
+    hasDiscount && product.salePrice && product.salePrice > 0
+      ? Math.round(((product.price - product.salePrice!) / product.price) * 100)
+      : null
 
   return (
     <>
@@ -56,9 +55,7 @@ export function WhatsAppProductCard({ product }: WhatsAppProductCardProps) {
 
           {/* Solo mostrar el badge si hay descuento real y el porcentaje es mayor a 0 */}
           {discountPercentage && (
-            <Badge className="absolute top-3 left-3 bg-red-500 hover:bg-red-600 text-xs">
-              -{discountPercentage}%
-            </Badge>
+            <Badge className="absolute top-3 left-3 bg-red-500 hover:bg-red-600 text-xs">-{discountPercentage}%</Badge>
           )}
 
           {product.stock <= 5 && product.stock > 0 && (
@@ -97,12 +94,12 @@ export function WhatsAppProductCard({ product }: WhatsAppProductCardProps) {
               {hasDiscount ? (
                 <>
                   <span className="text-sm md:text-base font-bold text-emerald-600">
-                    ${product.salePrice!}
+                    ${formatPrice(product.salePrice!)}
                   </span>
-                  <span className="text-xs text-gray-400 line-through">${product.price}</span>
+                  <span className="text-xs text-gray-400 line-through">${formatPrice(product.price)}</span>
                 </>
               ) : (
-                <span className="text-sm md:text-base font-bold text-gray-900">${product.price}</span>
+                <span className="text-sm md:text-base font-bold text-gray-900">${formatPrice(product.price)}</span>
               )}
             </div>
           </div>

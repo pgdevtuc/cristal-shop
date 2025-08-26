@@ -8,64 +8,91 @@ import { ObjectId } from "mongodb"
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const page = Math.max(1, Number(searchParams.get("page") ?? 1));
-    const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 12)));
-    const q = (searchParams.get("q") ?? "").trim();
-    const category = (searchParams.get("category") ?? "").trim();
+    const { searchParams } = new URL(req.url)
+    const page = Math.max(1, Number(searchParams.get("page") ?? 1))
+    const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 12)))
+    const q = (searchParams.get("q") ?? "").trim()
+    const category = (searchParams.get("category") ?? "").trim()
+    const priceFilter = (searchParams.get("priceFilter") ?? "").trim()
+    const maxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined
 
-    const db = await connectDB();
-    if (!db) return NextResponse.json({ error: "Error de conexión a la base de datos" }, { status: 500 });
-    const col = db.connection.db!.collection(process.env.DATABSE_COLECCTION_PROD || "");
+    const db = await connectDB()
+    if (!db) return NextResponse.json({ error: "Error de conexión a la base de datos" }, { status: 500 })
+    const col = db.connection.db!.collection(process.env.DATABSE_COLECCTION_PROD || "")
 
-    const base: any = { is_deleted: { $ne: true } };
     const filter: any = q
       ? {
-        ...base, $or: [
-          { name: { $regex: q, $options: "i" } },
-          { category: { $regex: q, $options: "i" } },
-        ]
+        $or: [{ name: { $regex: q, $options: "i" } }, { category: { $regex: q, $options: "i" } }],
       }
-      : { ...base };
+      : {}
 
-    if (category) filter.category = category;
+    if (category) filter.category = category
 
-    const total = await col.countDocuments(filter);
+    if (maxPrice) {
+      filter.$or = [
 
-    // 👇 orden determinista
-    const sort: Record<string, 1 | -1> = { createdAt: -1, _id: -1 };
-    const rawItems = await col.find(filter)
+        { salePrice: { $gt: 0, $lte: maxPrice } },
+
+        {
+          $and: [{ $or: [{ salePrice: 0 }, { salePrice: { $exists: false } }] }, { price: { $lte: maxPrice } }],
+        },
+      ]
+    }
+
+    const total = await col.countDocuments(filter)
+
+    let sort: Record<string, 1 | -1> = { createdAt: -1, _id: -1 }
+
+    if (priceFilter === "low-to-high") {
+      sort = { price: 1, _id: -1 } // Low to high price
+    } else if (priceFilter === "high-to-low") {
+      sort = { price: -1, _id: -1 } // High to low price
+    }
+
+    const rawItems = await col
+      .find(filter)
       .sort(sort)
       .skip((page - 1) * limit)
       .limit(limit)
-      .toArray();
+      .toArray()
 
-
-    const items = rawItems.map((p) => ({ ...p, id: p._id.toString() }));
+    const items = rawItems.map((p) => ({ ...p, id: p._id.toString() }))
 
     const [inStock, outOfStock, discounted] = await Promise.all([
-      col.countDocuments({ ...base, stock: { $gt: 0 } }),
-      col.countDocuments({ ...base, stock: 0 }),
-      col.countDocuments({ ...base, salesPrice: { $ne: null }, $expr: { $lt: ["$salesPrice", "$price"] } }),
-    ]);
+      col.countDocuments({ stock: { $gt: 0 } }),
+      col.countDocuments({ stock: 0 }),
+      col.countDocuments({ salesPrice: { $ne: 0 }, $expr: { $lt: ["$salesPrice", "$price"] } }),
+    ])
 
     return NextResponse.json({
-      items, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)),
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
       summary: { inStock, outOfStock, discounted },
-    });
+    })
   } catch {
-    return NextResponse.json({ error: "Error al obtener productos" }, { status: 500 });
+    return NextResponse.json({ error: "Error al obtener productos" }, { status: 500 })
   }
 }
+
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || (session.user as any).role !== "admin")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const product = await request.json()
+    if (!product.name || !product.price?.toString() || Number(product.price) < 0 || !product.category || product.stock < 0 || !product.description) {
+      return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 });
+    }
     const newProduct = {
       ...product,
+      image: product.image || "",
       stock: product.stock || 0,
+      salePrice: Number(product.salePrice) || 0,
+      price: Number(product.price),
     }
     const db = await connectDB();
     if (!db) {
@@ -94,7 +121,7 @@ export async function PUT(request: Request) {
     const product = await request.json();
     console.log("Producto a actualizar", product)
     const { id, ...updateData } = product;
-    
+
     if (!id) return NextResponse.json({ error: "No se encontro el ID de el producto" }, { status: 404 });
 
     const db = await connectDB();
@@ -142,7 +169,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Error de conexión a la base de datos" }, { status: 500 });
     }
 
-    const collection = db.connection.db?.collection<IProduct>(process.env.DATABSE_COLECCTION_PROD || "");
+    const collection = db.connection.db?.collection(process.env.DATABSE_COLECCTION_PROD || "");
     if (!collection) {
       return NextResponse.json({ error: "Colección no encontrada" }, { status: 500 });
     }

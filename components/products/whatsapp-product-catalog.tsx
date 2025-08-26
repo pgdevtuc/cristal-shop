@@ -1,24 +1,23 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useRef } from "react";
-import { WhatsAppProductCard } from "./whatsapp-product-card";
-import { ProductFilters } from "./product-filters";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { ApiListResponse } from "@/types/IWhatsappProductCatalog";
-import { Product } from "@/types/product";
+import { useState, useEffect, useRef } from "react"
+import { WhatsAppProductCard } from "./whatsapp-product-card"
+import { ProductFilters } from "./product-filters"
+import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
+import type { ApiListResponse } from "@/types/IWhatsappProductCatalog"
+import type { Product } from "@/types/product"
 
-
-type ApiCategories = { categories: { name: string; count: number }[] };
+type ApiCategories = { categories: { name: string; count: number }[] }
 
 // ------- debounce simple (espera antes de disparar fetch) -------
 function useDebounce<T>(value: T, delay = 450) {
-  const [debounced, setDebounced] = useState(value);
+  const [debounced, setDebounced] = useState(value)
   useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return debounced;
+    const id = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(id)
+  }, [value, delay])
+  return debounced
 }
 
 // map doc del server → IProduct (tu schema)
@@ -27,133 +26,132 @@ function mapServerProduct(doc: any): Product {
     id: String(doc._id ?? doc.id ?? ""),
     name: doc.title ?? doc.name ?? "",
     description: doc.description ?? "",
-    salePrice:
-      doc.salePrice !== null && doc.salePrice !== undefined
-        ? Number(doc.sales_price)
-        : Number(doc.price ?? 0),
-    price:
-      doc.price !== undefined && doc.price !== null ? Number(doc.price) : 0,
+    salePrice: doc.salePrice !== null && doc.salePrice !== undefined ? Number(doc.salePrice) : Number(doc.price ?? 0),
+    price: doc.price !== undefined && doc.price !== null ? Number(doc.price) : 0,
     category: doc.category ?? "",
     image: doc.image,
     stock: Number(doc.stock ?? 0),
-  };
+  }
 }
 
 export function WhatsAppProductCatalog() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // Nuevo estado para carga inicial
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true) // Nuevo estado para carga inicial
 
   // categorías globales
-  const [categories, setCategories] = useState<string[]>([]);
-  const [catLoading, setCatLoading] = useState(true);
+  const [categories, setCategories] = useState<string[]>([])
+  const [filterPrice, setFilterPrice] = useState<string>("all")
+  const [maxPrice, setMaxPrice] = useState<number>(0)
+  const [catLoading, setCatLoading] = useState(true)
 
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebounce(searchTerm, 450);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [searchTerm, setSearchTerm] = useState("")
+  const debouncedSearch = useDebounce(searchTerm, 450)
 
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const limit = 14;
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const limit = 14
 
-  const abortRef = useRef<AbortController | null>(null);
+  const abortRef = useRef<AbortController | null>(null)
   // cargar categorías + primera página
   useEffect(() => {
-    (async () => {
+    ; (async () => {
       try {
-        setCatLoading(true);
-        const res = await fetch("/api/categories");
-        const data: ApiCategories = await res.json();
-        const names = data.categories?.map((c) => c.name) ?? [];
-        setCategories(["all", ...names]);
+        setCatLoading(true)
+        const res = await fetch("/api/categories")
+        const data: ApiCategories = await res.json()
+        const names = data.categories?.map((c) => c.name) ?? []
+        setCategories(["all", ...names])
       } catch {
-        setCategories(["all"]);
+        setCategories(["all"])
       } finally {
-        setCatLoading(false);
+        setCatLoading(false)
       }
-    })();
+    })()
 
-    fetchPage(1, true, debouncedSearch);
+    fetchPage(1, true, debouncedSearch)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [])
 
   // cuando cambian filtros/búsqueda (debounced), reset y recarga
   useEffect(() => {
-    if (!initialLoading) { // Solo hacer reset después de la carga inicial
-      setProducts([]);
-      setPage(1);
-      fetchPage(1, true, debouncedSearch);
+    if (!initialLoading) {
+      // Solo hacer reset después de la carga inicial
+      setProducts([])
+      setPage(1)
+      fetchPage(1, true, debouncedSearch)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, debouncedSearch, initialLoading]);
+  }, [selectedCategory, debouncedSearch, initialLoading, filterPrice])
 
   async function fetchPage(nextPage: number, replace = false, qOverride?: string) {
     // cancela petición previa
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
 
-    const params = new URLSearchParams();
-    params.set("page", String(nextPage));
-    params.set("limit", String(limit));
+    const params = new URLSearchParams()
+    params.set("page", String(nextPage))
+    params.set("limit", String(limit))
+    if (filterPrice !== "all" && filterPrice !== "under-limit") params.set("priceFilter", filterPrice)
+    if (filterPrice === "under-limit" && maxPrice > 0) params.set("maxPrice", String(maxPrice))
 
-    const q = qOverride ?? debouncedSearch;
-    if (q) params.set("q", q);
-    if (selectedCategory && selectedCategory !== "all")
-      params.set("category", selectedCategory);
+    const q = qOverride ?? debouncedSearch
+    if (q) params.set("q", q)
+    if (selectedCategory && selectedCategory !== "all") params.set("category", selectedCategory)
 
     try {
-      if (replace || nextPage === 1) setLoading(true);
-      else setLoadingMore(true);
+      if (replace || nextPage === 1) setLoading(true)
+      else setLoadingMore(true)
 
       const res = await fetch(`/api/products?${params.toString()}`, {
         signal: ctrl.signal,
-      });
-      const raw = await res.json();
+      })
+      const raw = await res.json()
 
       if (Array.isArray(raw)) {
         // compat: si el endpoint aún devuelve array plano
-        const mapped = raw.map(mapServerProduct);
+        const mapped = raw.map(mapServerProduct)
         if (replace) {
-          setProducts(mapped);
+          setProducts(mapped)
         } else {
           setProducts((prev) => {
-            const seen = new Set(prev.map((p) => p.id));
-            const toAdd = mapped.filter((p) => !seen.has(p.id));
-            return [...prev, ...toAdd];
-          });
+            const seen = new Set(prev.map((p) => p.id))
+            const toAdd = mapped.filter((p) => !seen.has(p.id))
+            return [...prev, ...toAdd]
+          })
         }
-        setTotalPages(1);
-        setPage(1);
+        setTotalPages(1)
+        setPage(1)
       } else {
-        const data = raw as ApiListResponse;
-        const mapped = (data.items ?? []).map(mapServerProduct);
+        const data = raw as ApiListResponse
+        const mapped = (data.items ?? []).map(mapServerProduct)
 
         if (replace) {
-          setProducts(mapped);
+          setProducts(mapped)
         } else {
           setProducts((prev) => {
-            const seen = new Set(prev.map((p) => p.id));
-            const toAdd = mapped.filter((p) => !seen.has(p.id));
-            return [...prev, ...toAdd];
-          });
+            const seen = new Set(prev.map((p) => p.id))
+            const toAdd = mapped.filter((p) => !seen.has(p.id))
+            return [...prev, ...toAdd]
+          })
         }
 
-        setTotalPages(data.totalPages || 1);
-        setPage(nextPage);
+        setTotalPages(data.totalPages || 1)
+        setPage(nextPage)
       }
     } catch (err: any) {
-      if (err?.name !== "AbortError")
-        console.error("Error fetching products:", err);
+      if (err?.name !== "AbortError") console.error("Error fetching products:", err)
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
-      setInitialLoading(false); // La carga inicial ha terminado
+      setLoading(false)
+      setLoadingMore(false)
+      setInitialLoading(false) // La carga inicial ha terminado
     }
   }
 
-  const hasMore = page < totalPages;
+  const hasMore = page < totalPages
 
   return (
     <div className="whatsapp-bg min-h-screen pt-24">
@@ -165,8 +163,12 @@ export function WhatsAppProductCatalog() {
       </div>
 
       {/* Filtros - Siempre renderizados */}
-      <div className="px-4 mb-4">
+      <div className="px-4 mb-4 relative z-[100]">
         <ProductFilters
+          priceFilter={filterPrice}
+          onPriceFilterChange={setFilterPrice}
+          maxPrice={maxPrice}
+          onMaxPriceChange={setMaxPrice}
           categories={categories}
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
@@ -205,8 +207,8 @@ export function WhatsAppProductCatalog() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setSelectedCategory("all");
-                  setSearchTerm("");
+                  setSelectedCategory("all")
+                  setSearchTerm("")
                 }}
                 className="bg-white"
               >
@@ -216,7 +218,9 @@ export function WhatsAppProductCatalog() {
           </div>
         ) : (
           <>
-            <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0 ${loading && !initialLoading ? 'pt-16' : ''}`}>
+            <div
+              className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0 ${loading && !initialLoading ? "pt-16" : ""}`}
+            >
               {products.map((p) => (
                 <WhatsAppProductCard key={p.id} product={p} />
               ))}
@@ -250,5 +254,5 @@ export function WhatsAppProductCatalog() {
         )}
       </div>
     </div>
-  );
+  )
 }

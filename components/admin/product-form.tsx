@@ -2,24 +2,16 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { X } from "lucide-react"
-
-interface Product {
-  id: string
-  name: string
-  description: string
-  price: number
-  salePrice?: number | null
-  category: string
-  image: string
-  stock: number
-}
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { X } from "lucide-react";
+import { toast } from "sonner";
+import { Product } from "@/types/product";
+import { formatPrice } from "@/lib/formatPrice";
 
 interface ProductFormProps {
   product?: Product | null
@@ -31,7 +23,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
   const [formData, setFormData] = useState({
     name: product?.name || "",
     description: product?.description || "",
-    price: product?.price || 0,
+    price: product?.price || "",
     salePrice: product?.salePrice || "",
     category: product?.category || "",
     image: product?.image || "",
@@ -40,6 +32,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
 
   const [loading, setLoading] = useState(false)
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -47,7 +40,8 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
     try {
       const productData = {
         ...formData,
-        salePrice: formData.salePrice ? Number.parseFloat(formData.salePrice.toString()) : null,
+        salePrice: formData.salePrice ? Number(formData.salePrice.toString()) : null,
+        price: Number(formData.price.toString()) 
       }
 
       const response = await fetch("/api/products", {
@@ -61,10 +55,12 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
       })
 
       if (response.ok) {
+        toast.success(product ? "Producto actualizado" : "Producto creado", { position: "top-center", style: { color: "green" }, duration: 3000 })
         onSave()
       }
     } catch (error) {
       console.error("Error saving product:", error)
+      toast.error("Error al guardar el producto", { position: "top-center", style: { color: "red" }, duration: 3000 })
     } finally {
       setLoading(false)
     }
@@ -118,10 +114,19 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                 <Label htmlFor="price">Precio Regular</Label>
                 <Input
                   id="price"
-                  type="number"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: Number.parseFloat(e.target.value) })}
+                  type="text"
+                  value={formatPrice(formData.price)}
+                  onChange={(e) => {
+                    const numericValue = e.target.value.replace(/\./g, '');
+                    setFormData({ ...formData, price: numericValue });
+                  }}
+                  onBlur={(e) => {
+                    const numericValue = e.target.value.replace(/\./g, '');
+                    if (!isNaN(Number(numericValue))) {
+                      setFormData({ ...formData, price: numericValue });
+                    }
+                  }}
+                  placeholder="10.000"
                   required
                 />
               </div>
@@ -129,10 +134,19 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                 <Label htmlFor="salePrice">Precio de Oferta (Opcional)</Label>
                 <Input
                   id="salePrice"
-                  type="number"
+                  type="text"
                   step="0.01"
-                  value={formData.salePrice}
-                  onChange={(e) => setFormData({ ...formData, salePrice: e.target.value })}
+                  value={formatPrice(formData.salePrice)}
+                  onChange={(e) => {
+                    const numericValue = e.target.value.replace(/\./g, '');
+                    setFormData({ ...formData, salePrice: numericValue });
+                  }}
+                  onBlur={(e) => {
+                    const numericValue = e.target.value.replace(/\./g, '');
+                    if (!isNaN(Number(numericValue))) {
+                      setFormData({ ...formData, salePrice: numericValue });
+                    }
+                  }}
                 />
               </div>
               <div>
