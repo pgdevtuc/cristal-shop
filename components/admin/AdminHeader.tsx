@@ -21,10 +21,10 @@ export function AdminHeader() {
           </div>
 
           <nav className="flex items-center space-x-2">
-            <Link href="/admin">
+            <Link href="/admin/orders">
               <Button variant="ghost" size="sm" className="hover:bg-emerald-50 hover:text-emerald-700">
                 <BarChart3 className="h-4 w-4 mr-2" />
-                Dashboard
+                Pedidos
               </Button>
             </Link>
             <Link href="/admin/products">

@@ -209,6 +209,8 @@ export function WhatsAppProductCatalog() {
                 onClick={() => {
                   setSelectedCategory("all")
                   setSearchTerm("")
+                  setFilterPrice("")
+                  setMaxPrice(0)
                 }}
                 className="bg-white"
               >
