@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Trash2, Search } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { Product } from "@/lib/types"
 
 
@@ -33,7 +33,6 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
   const [customerPhone, setCustomerPhone] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
-  const { toast } = useToast()
 
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
@@ -66,20 +65,12 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
     const productToAdd = product || selectedProduct
 
     if (!productToAdd) {
-      toast({
-        title: "Error",
-        description: "Por favor selecciona un producto primero",
-        variant: "destructive",
-      })
+      toast.error("Por favor selecciona un producto primero", {position:"top-center",style:{color:"red"},duration:3000})
       return
     }
 
     if (selectedQuantity > productToAdd.stock) {
-      toast({
-        title: "Error",
-        description: `Stock insuficiente. Solo hay ${productToAdd.stock} unidades disponibles`,
-        variant: "destructive",
-      })
+      toast.error(`Stock insuficiente. Solo hay ${productToAdd.stock} unidades disponibles`, {position:"top-center",style:{color:"red"},duration:3000})
       return
     }
 
@@ -90,11 +81,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
       const newQuantity = existingProduct.quantity + selectedQuantity
 
       if (newQuantity > productToAdd.stock) {
-        toast({
-          title: "Error",
-          description: `Stock insuficiente. Ya tienes ${existingProduct.quantity} unidades. Máximo disponible: ${productToAdd.stock}`,
-          variant: "destructive",
-        })
+        toast.error(`Stock insuficiente. Ya tienes ${existingProduct.quantity} unidades. Máximo disponible: ${productToAdd.stock}`, {position:"top-center",style:{color:"red"},duration:3000})
         return
       }
 
@@ -135,11 +122,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
 
   const handleSubmit = async () => {
     if (!customerName || !customerPhone || products.length === 0) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos requeridos",
-        variant: "destructive",
-      })
+      toast.error("Por favor completa todos los campos requeridos", {position:"top-center",style:{color:"red"},duration:3000})
       return
     }
 
@@ -158,10 +141,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
       })
 
       if (response.ok) {
-        toast({
-          title: "Éxito",
-          description: "Orden creada exitosamente",
-        })
+        toast.success("Orden creada exitosamente", { position: "top-center", style: { color: "green" }, duration: 3000 })
 
         setProducts([])
         setSearchTerm("")
@@ -177,11 +157,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
         throw new Error("Error creating order")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Error al crear la orden",
-        variant: "destructive",
-      })
+      toast.error("Error al crear la orden", {position:"top-center",style:{color:"red"},duration:3000})
     } finally {
       setIsLoading(false)
     }

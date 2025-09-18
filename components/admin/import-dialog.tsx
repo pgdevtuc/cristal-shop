@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { X, Upload, FileText, Download } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 interface ImportDialogProps {
   onClose: () => void
@@ -18,7 +18,6 @@ interface ImportDialogProps {
 export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -31,11 +30,7 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
       ) {
         setFile(selectedFile)
       } else {
-        toast({
-          title: "Formato no válido",
-          description: "Solo se permiten archivos CSV y Excel (.xlsx)",
-          variant: "destructive",
-        })
+        toast.error( "Solo se permiten archivos CSV y Excel (.xlsx)")
       }
     }
   }
@@ -56,25 +51,14 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
       const result = await response.json()
 
       if (response.ok) {
-        toast({
-          title: "Importación exitosa",
-          description: result.message,
-        })
+        toast.success(result.message)
         onImportComplete()
         onClose()
       } else {
-        toast({
-          title: "Error en la importación",
-          description: result.error,
-          variant: "destructive",
-        })
+        toast.error(result.error)
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Error al procesar el archivo",
-        variant: "destructive",
-      })
+      toast.error("Error al procesar el archivo")
     } finally {
       setLoading(false)
     }
