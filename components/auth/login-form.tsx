@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { signIn } from "next-auth/react"
 
 export function LoginForm() {
@@ -21,7 +21,6 @@ export function LoginForm() {
     password: "",
   })
   const router = useRouter()
-  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,11 +32,11 @@ export function LoginForm() {
         redirect: false
       });
 
-      if (res?.error) return toast({ title: "Error de acceso", description: "Email o contraseña incorrectos", variant: "destructive", });
+      if (res?.error) return toast.error("Error de acceso", {position:"top-center",style:{color:"red"},duration:3000});
       router.push("/admin");
-      toast({ title: "Acceso concedido", description: "Bienvenido al panel de administracion" });
+      toast.success("Acceso concedido", { position: "top-center", style: { color: "green" }, duration: 3000 });
     } catch (error) {
-      return toast({ title: "Error de acceso", description: "Error en el servidor", variant: "destructive", });
+      return toast.error("Error de acceso", {position:"top-center",style:{color:"red"},duration:3000});
     } finally {
       setLoading(false);
     }
