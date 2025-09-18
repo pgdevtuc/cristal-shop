@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
-import { OrderFilters } from "@/components/orders/OrderFilters"
-import { OrderCard } from "@/components/orders/OrderCard"
-import { CreateOrderModal } from "@/components/orders/CreateOrderModal"
-import { useToast } from "@/hooks/use-toast"
+import OrderFilters from "@/components/orders/OrderFilters"
+import OrderCard from "@/components/orders/OrderCard"
+import CreateOrderModal from "@/components/orders/CreateOrderModal"
+import { toast } from "sonner"
 import { IOrder } from "@/types/order"
 import { AdminHeader } from "@/components/admin/AdminHeader"
 import { OrderStats } from "@/components/orders/OrderStats"
@@ -25,7 +25,6 @@ export default function OrdersPage() {
   })
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const { toast } = useToast()
 
   const fetchOrders = async () => {
     setIsLoading(true)
@@ -50,11 +49,7 @@ export default function OrdersPage() {
         throw new Error("Response not ok")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Error al cargar las órdenes",
-        variant: "destructive",
-      })
+      toast.error("Error",{position:"top-center",style:{color:"red"},duration:3000})
     } finally {
       setIsLoading(false)
     }
@@ -80,18 +75,14 @@ export default function OrdersPage() {
       })
 
       if (response.ok) {
-        toast({ title: "Éxito", description: "Estado de la orden actualizado" })
+        toast.success("Estado de la orden actualizado",{ position: "top-center", style: { color: "green" }, duration: 3000 })
         SetStatusRefresh(newStatus)
         fetchOrders()
       } else {
         throw new Error("Update failed")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Error al actualizar el estado",
-        variant: "destructive",
-      })
+      toast("Error al actualizar el estado",{position:"top-center",style:{color:"red"},duration:3000})
     }
   }
 

@@ -24,7 +24,7 @@ interface OrderFiltersProps {
   onClearFilters: () => void
 }
 
-export function OrderFilters({
+export default function OrderFilters({
   phoneFilter,
   setPhoneFilter,
   statusFilter,

@@ -23,7 +23,7 @@ interface CreateOrderModalProps {
   onOrderCreated: () => void
 }
 
-export function CreateOrderModal({ isOpen, onClose, onOrderCreated }: CreateOrderModalProps) {
+export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: CreateOrderModalProps) {
   const [products, setProducts] = useState<OrderProduct[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [searchResults, setSearchResults] = useState<Product[]>([])

@@ -16,7 +16,7 @@ interface OrderCardProps {
   onStatusChange: (orderId: string, newStatus: string) => void
 }
 
-export function OrderCard({ order, onStatusChange }: OrderCardProps) {
+export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   const getStatusColor = (status: string) => {
