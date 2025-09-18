@@ -1,5 +1,5 @@
 // app/api/get-token/route.ts
-import { getTokenDb } from "@/lib/getToken";
+import { validateTokenDB } from "@/lib/validateTokenDB";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -7,7 +7,7 @@ export async function GET(request: Request) {
 
   if (!id) return new Response("Missing ID", { status: 400 });
 
-  const token = await getTokenDb(id);
-  console.log(token)
+  const token = await validateTokenDB(id);
+
   return Response.json({ token });
 }

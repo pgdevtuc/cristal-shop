@@ -32,7 +32,7 @@ export function LoginForm() {
         password: formData.password,
         redirect: false
       });
-      console.log(res)
+
       if (res?.error) return toast({ title: "Error de acceso", description: "Email o contraseña incorrectos", variant: "destructive", });
       router.push("/admin");
       toast({ title: "Acceso concedido", description: "Bienvenido al panel de administracion" });

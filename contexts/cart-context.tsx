@@ -7,6 +7,7 @@ interface CartItem {
   name: string
   price: number
   image: string
+  stock?: number
   quantity: number
 }
 
@@ -18,7 +19,7 @@ type CartAction =
   | { type: "ADD_ITEM"; payload: Omit<CartItem, "quantity"> }
   | { type: "REMOVE_ITEM"; payload: string }
   | { type: "UPDATE_QUANTITY"; payload: { id: string; quantity: number } }
-  | { type: "CLEAR_CART"}
+  | { type: "CLEAR_CART" }
   | { type: "SET_CART"; payload: CartItem[] }
 
 const CartContext = createContext<{
@@ -36,12 +37,17 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     case "ADD_ITEM": {
       const existingItem = state.items.find((item) => item.id === action.payload.id)
 
-      if (existingItem) {
+      if (existingItem && existingItem.stock && existingItem.quantity < existingItem.stock) {
+
         return {
           ...state,
           items: state.items.map((item) =>
             item.id === action.payload.id ? { ...item, quantity: item.quantity + 1 } : item,
           ),
+        }
+      } else if (existingItem && existingItem?.stock === existingItem.quantity) {
+        return {
+          ...state
         }
       }
 
@@ -58,6 +64,8 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       }
 
     case "UPDATE_QUANTITY":
+      const existingItem = state.items.find((item) => item.id === action.payload.id)
+
       if (action.payload.quantity <= 0) {
         return {
           ...state,
@@ -65,12 +73,26 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         }
       }
 
-      return {
-        ...state,
-        items: state.items.map((item) =>
-          item.id === action.payload.id ? { ...item, quantity: action.payload.quantity } : item,
-        ),
+      if (existingItem && action.payload.quantity < existingItem.quantity) {
+        return {
+          ...state,
+          items: state.items.map((item) =>
+            item.id === action.payload.id ? { ...item, quantity: action.payload.quantity } : item,
+          ),
+        }
+      } else if (existingItem && existingItem.stock && existingItem.quantity < existingItem.stock) {
+        return {
+          ...state,
+          items: state.items.map((item) =>
+            item.id === action.payload.id ? { ...item, quantity: action.payload.quantity } : item,
+          ),
+        }
       }
+
+      return {
+        ...state
+      }
+
 
     case "SET_CART":
       return {
@@ -166,21 +188,20 @@ export async function getCartFromApi(cartId: string): Promise<CartItem[]> {
     }
 
     const response = await fetch(`/api/cart?idCart=${cartId}`)
-    
+
     const apiCart = await response.json()
-    
-    // Manejar tanto status 200 como 404
+
     if (response.status === 200 || response.status === 404) {
-      // Verificar si hay productos
+
       if (apiCart.products && Array.isArray(apiCart.products) && apiCart.products.length > 0) {
         return transformApiCartToCartItems({ items: apiCart.products })
       } else {
         return []
       }
     }
-    
+
     throw new Error(`Error al obtener el carrito: ${response.status}`)
-    
+
   } catch (error) {
     console.error('Error getting cart:', error)
     return []

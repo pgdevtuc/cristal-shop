@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server"
-import { IProduct } from "@/types/product"
 import connectDB from "@/lib/database"
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { ObjectId } from "mongodb"
-
+import Product from "@/lib/models/product"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
 export async function GET(req: Request) {
   try {
@@ -16,52 +14,47 @@ export async function GET(req: Request) {
     const priceFilter = (searchParams.get("priceFilter") ?? "").trim()
     const maxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined
 
-    const db = await connectDB()
-    if (!db) return NextResponse.json({ error: "Error de conexión a la base de datos" }, { status: 500 })
-    const col = db.connection.db!.collection(process.env.DATABSE_COLECCTION_PROD || "")
+    await connectDB()
 
     const filter: any = q
       ? {
-        $or: [{ name: { $regex: q, $options: "i" } }, { category: { $regex: q, $options: "i" } }],
-      }
+          $or: [{ name: { $regex: q, $options: "i" } }, { category: { $regex: q, $options: "i" } }],
+        }
       : {}
 
     if (category) filter.category = category
 
     if (maxPrice) {
       filter.$or = [
-
         { salePrice: { $gt: 0, $lte: maxPrice } },
-
         {
           $and: [{ $or: [{ salePrice: 0 }, { salePrice: { $exists: false } }] }, { price: { $lte: maxPrice } }],
         },
       ]
     }
 
-    const total = await col.countDocuments(filter)
+    const total = await Product.countDocuments(filter)
 
     let sort: Record<string, 1 | -1> = { createdAt: -1, _id: -1 }
 
     if (priceFilter === "low-to-high") {
-      sort = { price: 1, _id: -1 } // Low to high price
+      sort = { price: 1, _id: -1 }
     } else if (priceFilter === "high-to-low") {
-      sort = { price: -1, _id: -1 } // High to low price
+      sort = { price: -1, _id: -1 }
     }
 
-    const rawItems = await col
-      .find(filter)
+    const rawItems = await Product.find(filter)
       .sort(sort)
       .skip((page - 1) * limit)
       .limit(limit)
-      .toArray()
+      .lean()
 
-    const items = rawItems.map((p) => ({ ...p, id: p._id.toString() }))
+    const items = rawItems.map((p) => ({ ...p, id: (p as any)._id.toString() }))
 
     const [inStock, outOfStock, discounted] = await Promise.all([
-      col.countDocuments({ stock: { $gt: 0 } }),
-      col.countDocuments({ stock: 0 }),
-      col.countDocuments({ salesPrice: { $ne: 0 }, $expr: { $lt: ["$salesPrice", "$price"] } }),
+      Product.countDocuments({ stock: { $gt: 0 } }),
+      Product.countDocuments({ stock: 0 }),
+      Product.countDocuments({ salePrice: { $ne: 0 }, $expr: { $lt: ["$salePrice", "$price"] } }),
     ])
 
     return NextResponse.json({
@@ -77,113 +70,90 @@ export async function GET(req: Request) {
   }
 }
 
-
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions)
     if (!session || (session.user as any).role !== "admin")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
     const product = await request.json()
-    if (!product.name || !product.price?.toString() || Number(product.price) < 0 || !product.category || product.stock < 0 || !product.description) {
-      return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 });
+    if (
+      !product.name ||
+      !product.price?.toString() ||
+      Number(product.price) < 0 ||
+      !product.category ||
+      product.stock < 0 ||
+      !product.description
+    ) {
+      return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 })
     }
-    const newProduct = {
+
+    await connectDB()
+
+    const newProduct = new Product({
       ...product,
       image: product.image || "",
       stock: product.stock || 0,
       salePrice: Number(product.salePrice) || 0,
       price: Number(product.price),
-    }
-    const db = await connectDB();
-    if (!db) {
-      return NextResponse.json({ error: "Error de conexión a la base de datos" }, { status: 500 })
-    }
+    })
 
-    const collection = db.connection.db?.collection<IProduct>(process.env.DATABSE_COLECCTION_PROD || "");
-    if (!collection) {
-      return NextResponse.json({ error: "Colección no encontrada" }, { status: 500 })
-    }
+    const savedProduct = await newProduct.save()
 
-    await collection.insertOne(newProduct);
-
-    return NextResponse.json(newProduct, { status: 201 })
+    return NextResponse.json(savedProduct, { status: 201 })
   } catch (error) {
     return NextResponse.json({ error: "Error al crear producto" }, { status: 500 })
   }
 }
 
-
 export async function PUT(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions)
     if (!session || (session.user as any).role !== "admin")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const product = await request.json();
-    console.log("Producto a actualizar", product)
-    const { id, ...updateData } = product;
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    if (!id) return NextResponse.json({ error: "No se encontro el ID de el producto" }, { status: 404 });
+    const product = await request.json()
+    const { id, ...updateData } = product
 
-    const db = await connectDB();
-    if (!db) {
-      return NextResponse.json({ error: "Error de conexión a la base de datos" }, { status: 500 });
-    }
+    if (!id) return NextResponse.json({ error: "No se encontro el ID de el producto" }, { status: 404 })
 
-    const collection = db.connection.db?.collection<IProduct>(process.env.DATABSE_COLECCTION_PROD || "");
-    if (!collection) {
-      return NextResponse.json({ error: "Colección no encontrada" }, { status: 500 });
-    }
+    await connectDB()
 
-    const updatedProduct = await collection.findOneAndUpdate(
-      { _id: typeof id === "string" && ObjectId.isValid(id) ? new ObjectId(id) : id },
-      { $set: updateData },
-      { returnDocument: "after" }
-    );
+    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
 
     if (!updatedProduct) {
-      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
+      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    return NextResponse.json(updatedProduct, { status: 200 });
+    return NextResponse.json(updatedProduct, { status: 200 })
   } catch (error) {
-    return NextResponse.json({ error: "Error al actualizar producto" }, { status: 500 });
+    return NextResponse.json({ error: "Error al actualizar producto" }, { status: 500 })
   }
 }
-
 
 export async function DELETE(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions)
     if (!session || (session.user as any).role !== "admin")
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    console.log("ID recibido:", id);
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    if (!id || !ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "ID de producto inválido" }, { status: 400 });
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get("id")
+
+    if (!id) {
+      return NextResponse.json({ error: "ID de producto inválido" }, { status: 400 })
     }
 
-    const db = await connectDB();
-    if (!db) {
-      return NextResponse.json({ error: "Error de conexión a la base de datos" }, { status: 500 });
+    await connectDB()
+
+    const result = await Product.findByIdAndDelete(id)
+
+    if (!result) {
+      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    const collection = db.connection.db?.collection(process.env.DATABSE_COLECCTION_PROD || "");
-    if (!collection) {
-      return NextResponse.json({ error: "Colección no encontrada" }, { status: 500 });
-    }
-
-    const result = await collection.deleteOne({ _id: new ObjectId(id) });
-
-    if (result.deletedCount === 0) {
-      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
-    }
-
-    return NextResponse.json({ message: "Producto eliminado correctamente" }, { status: 200 });
+    return NextResponse.json({ message: "Producto eliminado correctamente" }, { status: 200 })
   } catch (error) {
-    return NextResponse.json({ error: "Error al eliminar producto" }, { status: 500 });
+    return NextResponse.json({ error: "Error al eliminar producto" }, { status: 500 })
   }
-
 }
-

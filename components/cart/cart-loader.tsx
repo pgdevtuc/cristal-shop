@@ -11,10 +11,8 @@ export function CartLoader() {
   
   useEffect(() => {
     const idCart = searchParams.get('idCart')
-    
-    // Solo cargar si hay idCart y no se ha cargado ya este carrito
+
     if (idCart && idCart !== loadedCartId.current) {
-      console.log("Cargando carrito con ID:", idCart)
       
       const loadCart = async () => {
         try {

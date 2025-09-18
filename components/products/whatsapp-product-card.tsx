@@ -22,6 +22,7 @@ export function WhatsAppProductCard({ product }: WhatsAppProductCardProps) {
       name: product.name,
       price: product.salePrice || product.price,
       image: product.image,
+      stock:product.stock
     })
   }
 

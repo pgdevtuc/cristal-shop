@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { verify } from "jsonwebtoken"
 
 // Interfaces TypeScript
 interface Producto {
@@ -34,9 +35,26 @@ interface RequestBody {
 }
 
 export async function POST(request: NextRequest) {
+
+  const token = request.headers.get("Authorization")?.split(" ")[1]
+  const secretKey = process.env.NEXTAUTH_SECRET ?? "";
+  
+  console.log("Aqui esta el tokenx", token)
+
+  if (!token?.trim()) return NextResponse.json({ message: "Token no encontrado" }, { status: 400 })
+
+
+  try {
+    const decode = verify(token, secretKey);
+  } catch (error) {
+    console.log(error);
+    return NextResponse.json({ error }, { status: 401 });
+  }
+
+
   try {
     const body: RequestBody = await request.json();
-    
+
     // Validar que existan productos
     if (!body.productos || !Array.isArray(body.productos) || body.productos.length === 0) {
       return NextResponse.json(
@@ -47,18 +65,18 @@ export async function POST(request: NextRequest) {
 
     // Datos por defecto
     const datosEmpresa = {
-      nombre: body.empresa?.nombre || 'Mi Empresa S.A.',
-      direccion: body.empresa?.direccion || 'Calle Principal 123, Ciudad',
-      cuit: body.empresa?.cuit || '20-12345678-9',
-      telefono: body.empresa?.telefono || '(123) 456-7890',
-      email: body.empresa?.email || 'contacto@miempresa.com'
+      nombre: body.empresa?.nombre || 'Cristal Shop',
+      direccion: body.empresa?.direccion || 'Dirección: Villafañe 75, Perico, Jujuy, Argentina 4610',
+      cuit: body.empresa?.cuit || '00-00000000-00',
+      telefono: body.empresa?.telefono || '+54 9 388 505-1954',
+      email: body.empresa?.email || 'cristalshop@gmail.com'
     };
 
     const datosCliente = {
-      nombre: body.cliente?.nombre || 'Cliente Ejemplo',
-      direccion: body.cliente?.direccion || 'Av. Cliente 456, Ciudad',
-      cuit: body.cliente?.cuit || '23-87654321-4',
-      email: body.cliente?.email || 'cliente@email.com'
+      nombre: body.cliente?.nombre || '---------',
+      direccion: body.cliente?.direccion || '---------',
+      cuit: body.cliente?.cuit || '---------',
+      email: body.cliente?.email || '---------'
     };
 
     const numeroFactura = body.numeroFactura || `001-${Date.now().toString().slice(-6)}`;
@@ -66,14 +84,14 @@ export async function POST(request: NextRequest) {
 
     // Crear el PDF
     const doc = new jsPDF();
-    
+
     // Configurar fuente
     doc.setFont('helvetica');
 
     // Header con fondo verde
     doc.setFillColor(26, 95, 63); // Verde oscuro #1a5f3f
     doc.rect(0, 0, 210, 45, 'F');
-    
+
     // Título
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(28);
@@ -86,7 +104,7 @@ export async function POST(request: NextRequest) {
     doc.setFontSize(14);
     doc.setTextColor(26, 95, 63);
     doc.text('DATOS DE LA EMPRESA', 20, 60);
-    
+
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
@@ -102,7 +120,7 @@ export async function POST(request: NextRequest) {
     doc.setFontSize(14);
     doc.setTextColor(26, 95, 63);
     doc.text('FACTURAR A:', 120, 60);
-    
+
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
@@ -116,13 +134,13 @@ export async function POST(request: NextRequest) {
     // Detalles de la factura
     doc.setFillColor(248, 249, 250);
     doc.rect(15, 105, 180, 20, 'F');
-    
+
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(26, 95, 63);
     doc.text(`Factura #${numeroFactura}`, 20, 115);
     doc.text(`Fecha: ${fecha}`, 20, 122);
-    
+
 
     // Preparar datos para la tabla
     const tableData = body.productos.map(producto => [
@@ -138,13 +156,13 @@ export async function POST(request: NextRequest) {
       head: [['Cant.', 'Descripción', 'Precio Unit.', 'Total']],
       body: tableData,
       theme: 'grid',
-      headStyles: { 
+      headStyles: {
         fillColor: [26, 95, 63],
         textColor: [255, 255, 255],
         fontSize: 10,
         fontStyle: 'bold'
       },
-      bodyStyles: { 
+      bodyStyles: {
         fontSize: 9,
         cellPadding: 4
       },
@@ -164,7 +182,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Calcular totales
-    const subtotal = body.productos.reduce((sum, producto) => 
+    const subtotal = body.productos.reduce((sum, producto) =>
       sum + (producto.price * producto.quantity), 0
     );
     const descuento = subtotal * 0.05; // 5% descuento
@@ -174,7 +192,7 @@ export async function POST(request: NextRequest) {
 
     // Obtener la posición Y final de la tabla anterior
     const finalY = (doc as any).lastAutoTable.finalY + 10;
-    
+
     // Tabla de totales (solo subtotal)
     autoTable(doc, {
       startY: finalY,
@@ -182,11 +200,11 @@ export async function POST(request: NextRequest) {
         ['Subtotal:', `${subtotal.toLocaleString('es-AR')}`]
       ],
       theme: 'plain',
-      styles: { 
+      styles: {
         fontSize: 11,
         cellPadding: 5
       },
-      bodyStyles: { 
+      bodyStyles: {
         fontSize: 11
       },
       columnStyles: {
@@ -199,7 +217,7 @@ export async function POST(request: NextRequest) {
     const totalFinalY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFillColor(26, 95, 63);
     doc.rect(115, totalFinalY - 7, 80, 10, 'F');
-    
+
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -207,13 +225,13 @@ export async function POST(request: NextRequest) {
     doc.text(`${subtotal.toLocaleString('es-AR')}`, 185, totalFinalY - 1, { align: 'right' });
 
     const notesY = totalFinalY + 15;
-  
-    
+
+
     // Footer
     const footerY = notesY + 35;
     doc.setFillColor(26, 95, 63);
     doc.rect(0, footerY, 210, 20, 'F');
-    
+
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -224,12 +242,12 @@ export async function POST(request: NextRequest) {
 
     // Generar el PDF como buffer
     const pdfBuffer = doc.output('arraybuffer');
-    
+
     // Configurar headers para descarga
     const headers = new Headers();
     headers.set('Content-Type', 'application/pdf');
     headers.set('Content-Disposition', `attachment; filename="factura_${numeroFactura.replace('-', '_')}.pdf"`);
-    
+
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers

@@ -23,7 +23,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <CartProvider>
-            {children}
+              {children}
             <Toaster />
           </CartProvider>
         </AuthProvider>

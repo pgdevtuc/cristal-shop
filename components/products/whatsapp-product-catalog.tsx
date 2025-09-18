@@ -202,7 +202,7 @@ export function WhatsAppProductCatalog() {
         {/* Productos */}
         {products && products.length === 0 && !loading ? (
           <div className="text-center py-20">
-            <div className="bg-white bg-opacity-90 rounded-lg p-6 mx-4 shadow-sm">
+            <div className="bg-gray-100 bg-opacity-80 rounded-lg p-6 mx-4 shadow-sm">
               <p className="text-gray-600 text-lg mb-4">No se encontraron productos</p>
               <Button
                 variant="outline"

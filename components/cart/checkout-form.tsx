@@ -1,7 +1,5 @@
 "use client"
 
-import React, { use } from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +29,7 @@ interface CheckoutFormProps {
 export function CheckoutForm({ items, totalPrice, onBack, onClose }: CheckoutFormProps) {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
+  const idCart = searchParams.get("idCart") || "";
   const [loading, setLoading] = useState(false)
   const [tokenless, setTokenless] = useState(false)
   //const [needsShipping, setNeedsShipping] = useState(false)
@@ -41,6 +40,21 @@ export function CheckoutForm({ items, totalPrice, onBack, onClose }: CheckoutFor
   const { clearCart } = useCart()
 
   useEffect(() => {
+    if (idCart) {
+      try {
+        const fetchData = async () => {
+          const res = await fetch(`/api/cart?idCart=${idCart}`);
+          if (res.ok) {
+            const data = await res.json();
+            return setFormData({ ...formData, name: data?.name });
+          }
+          else return;
+        }
+        fetchData()
+      } catch (error) {
+        return;
+      }
+    }
     if (!id) return setTokenless(true);
     try {
       const fetchData = async () => {
@@ -73,7 +87,8 @@ export function CheckoutForm({ items, totalPrice, onBack, onClose }: CheckoutFor
                   id: item.id,
                   title: item.name,
                   unit_price: item.price,
-                  quantity: item.quantity
+                  quantity: item.quantity,
+                  image: item.image || ""
                 })),
                 totalPrice,
                 //needsShipping,
