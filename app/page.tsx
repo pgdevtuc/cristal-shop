@@ -3,6 +3,7 @@ import { WhatsAppHeader } from "@/components/layout/whatsapp-header"
 import { WhatsAppProductCatalog } from "@/components/products/whatsapp-product-catalog"
 import { FloatingCartButton } from "@/components/products/floating-cart-button"
 import { CartLoader } from "@/components/cart/cart-loader"
+import { Suspense } from "react"
 
 
 export default function HomePage() {
@@ -14,7 +15,9 @@ export default function HomePage() {
         <WhatsAppProductCatalog />
       </main>
       <FloatingCartButton />
-      <CartLoader />
+      <Suspense fallback={<div>Loading...</div>}>
+        <CartLoader />
+      </Suspense>
     </div>
   );
 
