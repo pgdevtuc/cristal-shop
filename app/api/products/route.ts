@@ -49,7 +49,8 @@ export async function GET(req: Request) {
       .limit(limit)
       .lean()
 
-    const items = rawItems.map((p) => ({ ...p, id: (p as any)._id.toString() }))
+      //cuando cambie a array en mongo sacar el image este
+    const items = rawItems.map((p) => ({ ...p, id: (p as any)._id.toString(),image:[p.image] }))
 
     const [inStock, outOfStock, discounted] = await Promise.all([
       Product.countDocuments({ stock: { $gt: 0 } }),

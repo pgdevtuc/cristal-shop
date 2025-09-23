@@ -6,12 +6,22 @@ import { ArrowLeft, Phone, MoreVertical, User, ShoppingCart } from "lucide-react
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
 import { CartDrawer } from "@/components/cart/cart-drawer"
+import { usePathname } from "next/navigation"
 import Image from "next/image"
+import { useSearchParams } from "next/navigation"
 
 export function WhatsAppHeader() {
+  const pathname = usePathname();
   const [isCartOpen, setIsCartOpen] = useState(false)
   const { items } = useCart()
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
+
+  const param=useSearchParams();
+  const id = param.get("id");
+
+  const buildUrl = (basePath: string) => {
+    return id ? `${basePath}?id=${id}` : basePath
+  }
 
   // Cerrar carrito automáticamente si se vacía
   useEffect(() => {
@@ -29,7 +39,7 @@ export function WhatsAppHeader() {
             <span className="text-emerald-200">Powered by</span>
             <span className="font-semibold text-white">Waichatt</span>
           </div>
-          <Link href="/login" className="text-emerald-200 hover:text-white flex items-center space-x-1">
+          <Link href={buildUrl("/login")} className="text-emerald-200 hover:text-white flex items-center space-x-1">
             <User className="h-3 w-3" />
             <span>Admin</span>
           </Link>
@@ -37,14 +47,15 @@ export function WhatsAppHeader() {
 
         {/* Header principal estilo WhatsApp */}
         <div className="flex items-center px-4 py-3">
-          <Button variant="ghost" size="sm" className="text-white hover:bg-emerald-700 p-2 mr-2">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-
+          <Link href={pathname.includes("product") ? buildUrl("/") : buildUrl("#")}>
+            <Button variant="ghost" size="sm" className="text-white hover:bg-emerald-700 p-2 mr-2">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
           <div className="flex items-center space-x-3 flex-1">
             <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
               <div className="w-8 h-8 bg-gradient-to-r rounded-full flex items-center justify-center text-center">
-                <Image src="/images/CRISTAL_LOGO.webp" width={40} height={40} alt="logo"/>
+                <Image src="/images/CRISTAL_LOGO.webp" width={40} height={40} alt="logo" />
               </div>
             </div>
             <div className="flex-1">

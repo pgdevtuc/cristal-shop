@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { WhatsAppProductCard } from "./whatsapp-product-card"
+import { WhatsAppProductCardSkeleton } from "./whatsapp-product-card-skeleton"
 import { ProductFilters } from "./product-filters"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
@@ -57,7 +58,7 @@ export function WhatsAppProductCatalog() {
   const abortRef = useRef<AbortController | null>(null)
   // cargar categorías + primera página
   useEffect(() => {
-    ; (async () => {
+    ;(async () => {
       try {
         setCatLoading(true)
         const res = await fetch("/api/categories")
@@ -181,77 +182,79 @@ export function WhatsAppProductCatalog() {
       <div className="relative">
         {/* Loading overlay solo para la carga inicial */}
         {initialLoading && (
-          <div className="absolute inset-0  bg-opacity-100 z-10 flex items-center justify-center min-h-[400px]">
-            <div className="flex items-center">
-              <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-              <span className="ml-2 text-gray-600">Cargando productos...</span>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0">
+            {[...Array(limit)].map((_, i) => (
+              <WhatsAppProductCardSkeleton key={i} />
+            ))}
           </div>
         )}
 
         {/* Loading indicator para búsquedas/filtros (más sutil) */}
         {loading && !initialLoading && (
-          <div className="absolute top-0 left-0 right-0 z-10 p-3">
-            <div className="flex items-center justify-center">
-              <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
-              <span className="ml-2 text-emerald-700 text-sm">Buscando...</span>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0 opacity-60">
+            {[...Array(8)].map((_, i) => (
+              <WhatsAppProductCardSkeleton key={i} />
+            ))}
           </div>
         )}
 
-        {/* Productos */}
-        {products && products.length === 0 && !loading ? (
-          <div className="text-center py-20">
-            <div className="bg-gray-100 bg-opacity-80 rounded-lg p-6 mx-4 shadow-sm">
-              <p className="text-gray-600 text-lg mb-4">No se encontraron productos</p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedCategory("all")
-                  setSearchTerm("")
-                  setFilterPrice("")
-                  setMaxPrice(0)
-                }}
-                className="bg-white"
-              >
-                Limpiar filtros
-              </Button>
-            </div>
-          </div>
-        ) : (
+        {/* Productos - Solo mostrar cuando no está en carga inicial */}
+        {!initialLoading &&  (
           <>
-            <div
-              className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0 ${loading && !initialLoading ? "pt-16" : ""}`}
-            >
-              {products.map((p) => (
-                <WhatsAppProductCard key={p.id} product={p} />
-              ))}
-            </div>
-
-            {/* Cargar más */}
-            <div className="flex justify-center pb-20">
-              {hasMore ? (
-                <Button
-                  onClick={() => fetchPage(page + 1)}
-                  disabled={loadingMore}
-                  className="bg-white text-emerald-700 border border-emerald-200"
-                  variant="outline"
+            {products && products.length === 0 && !loading ? (
+              <div className="text-center py-20">
+                <div className="bg-gray-100 bg-opacity-80 rounded-lg p-6 mx-4 shadow-sm">
+                  <p className="text-gray-600 text-lg mb-4">No se encontraron productos</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedCategory("all")
+                      setSearchTerm("")
+                      setFilterPrice("")
+                      setMaxPrice(0)
+                    }}
+                    className="bg-white"
+                  >
+                    Limpiar filtros
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div
+                  className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0 ${loading ? "opacity-50" : ""}`}
                 >
-                  {loadingMore ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Cargando…
-                    </>
-                  ) : (
-                    "Cargar más"
-                  )}
-                </Button>
-              ) : products.length > 0 ? (
-                <span className="text-xs text-gray-500 bg-white bg-opacity-80 px-3 py-1 rounded-full">
-                  No hay más productos
-                </span>
-              ) : null}
-            </div>
+                  {products.map((p) => (
+                    <WhatsAppProductCard key={p.id} product={p} />
+                  ))}
+                </div>
+
+                {/* Cargar más */}
+                <div className="flex justify-center pb-20">
+                  {hasMore ? (
+                    <Button
+                      onClick={() => fetchPage(page + 1)}
+                      disabled={loadingMore}
+                      className="bg-white text-emerald-700 border border-emerald-200"
+                      variant="outline"
+                    >
+                      {loadingMore ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Cargando…
+                        </>
+                      ) : (
+                        "Cargar más"
+                      )}
+                    </Button>
+                  ) : products.length > 0 ? (
+                    <span className="text-xs text-gray-500 bg-white bg-opacity-80 px-3 py-1 rounded-full">
+                      No hay más productos
+                    </span>
+                  ) : null}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

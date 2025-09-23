@@ -31,7 +31,7 @@ export function CheckoutForm({ items, totalPrice, onBack, onClose }: CheckoutFor
   const id = searchParams.get("id") || "";
   const idCart = searchParams.get("idCart") || "";
   const [loading, setLoading] = useState(false)
-  const [tokenless, setTokenless] = useState(false)
+  const [tokenless, setTokenless] = useState(true)
   //const [needsShipping, setNeedsShipping] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
