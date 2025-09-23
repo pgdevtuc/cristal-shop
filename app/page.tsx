@@ -10,7 +10,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
-      <WhatsAppHeader />
+      <Suspense fallback={<div>Loading...</div>}>
+        <WhatsAppHeader />
+      </Suspense>
       <main>
         <WhatsAppProductCatalog />
       </main>
