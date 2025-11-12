@@ -36,7 +36,7 @@ export function ProductList({ products, loading, onEdit, onDelete }: ProductList
       </Card>
     )
   }
-  console.log("Rendering ProductList with products:", products);
+
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -53,7 +53,7 @@ export function ProductList({ products, loading, onEdit, onDelete }: ProductList
           <Card key={product.id} className="overflow-hidden">
             <div className="relative">
               <Image
-                src={product.image[0] || "/placeholder.svg"}
+                src={product.image || "/placeholder.svg"}
                 alt={product.name}
                 width={300}
                 height={200}

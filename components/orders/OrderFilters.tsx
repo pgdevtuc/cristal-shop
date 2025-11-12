@@ -187,9 +187,11 @@ export default function OrderFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Todos">Todos</SelectItem>
-              <SelectItem value="En Proceso">En Proceso</SelectItem>
-              <SelectItem value="Cancelado">Cancelado</SelectItem>
-              <SelectItem value="Completado">Completado</SelectItem>
+              <SelectItem value="PROCESSING">En Proceso</SelectItem>
+              <SelectItem value="PENDING">Pendiente</SelectItem>
+              <SelectItem value="CANCELLED">Cancelado</SelectItem>
+              <SelectItem value="FAILED">Fallido</SelectItem>
+              <SelectItem value="SUCCESS">Completado</SelectItem>
             </SelectContent>
           </Select>
         </div>

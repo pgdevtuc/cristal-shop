@@ -50,7 +50,7 @@ export async function GET(req: Request) {
       .lean()
 
       //cuando cambie a array en mongo sacar el image este
-    const items = rawItems.map((p) => ({ ...p, id: (p as any)._id.toString(),image:[p.image] }))
+    const items = rawItems.map((p) => ({ ...p, id: (p as any)._id.toString() }))
 
     const [inStock, outOfStock, discounted] = await Promise.all([
       Product.countDocuments({ stock: { $gt: 0 } }),
@@ -119,6 +119,8 @@ export async function PUT(request: Request) {
     if (!id) return NextResponse.json({ error: "No se encontro el ID de el producto" }, { status: 404 })
 
     await connectDB()
+
+    console.log("Updating product with ID:", id, "and data:", updateData);
 
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
 

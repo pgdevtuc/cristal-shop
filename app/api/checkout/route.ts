@@ -149,10 +149,10 @@ export async function POST(req: Request) {
           currency: "032",
           items: validatedProducts,
           redirect_urls: {
-            success: `${process.env.NEXTAUTH_URL}/success?orderId=${newOrder._id}`,
-            failed: `${process.env.NEXTAUTH_URL}/failed?orderId=${newOrder._id}`
+            success: `https://cristaltienda.waichatt.com/success?orderId=${newOrder._id}`,
+            failed: `https://cristaltienda.waichatt.com/failed?orderId=${newOrder._id}`
           },
-          webhookUrl: `${process.env.NEXTAUTH_URL}/api/webhook`,
+          webhookUrl: `https://cristaltienda.waichatt.com/api/webhook`,
           external_reference: newOrder._id.toString()
         }
       }

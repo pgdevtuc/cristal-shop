@@ -50,7 +50,7 @@ export function WhatsAppProductCard({ product }: WhatsAppProductCardProps) {
           //onClick={() => setShowImageModal(true)}
           >
             <Image
-              src={product.image[0] || "/placeholder.svg"}
+              src={product.image || "/placeholder.svg"}
               alt={product.name}
               width={400}
               height={250}
