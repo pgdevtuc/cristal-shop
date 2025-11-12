@@ -1,14 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import {  useRouter } from "next/navigation"
 import { CheckCircle, Package, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function SuccessPage() {
-  const searchParams = useSearchParams()
   const router = useRouter()
-  const orderId = searchParams.get('orderId')
   const [countdown, setCountdown] = useState(10)
 
   useEffect(() => {
@@ -41,17 +39,7 @@ export default function SuccessPage() {
           </p>
         </div>
 
-        {orderId && (
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-center text-sm text-gray-600 mb-2">
-              <Package className="w-4 h-4 mr-2" />
-              Número de Orden
-            </div>
-            <p className="font-mono text-lg font-semibold text-gray-900">
-              {orderId}
-            </p>
-          </div>
-        )}
+     
 
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
