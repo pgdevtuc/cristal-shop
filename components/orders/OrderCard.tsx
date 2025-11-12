@@ -5,37 +5,58 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { IOrder } from "@/types/order"
-
+import Image from "next/image"
 
 interface OrderCardProps {
   order: IOrder
-  onStatusChange: (orderId: string, newStatus: string) => void
+  onStatusChange: (orderId: string, newStatus: IOrder["status"]) => void
 }
 
 export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: IOrder["status"]) => {
     switch (status) {
-      case "Cancelado":
+      case "SUCCESS":
+        return "bg-green-500 text-white hover:bg-green-700"
+      case "PROCESSING":
+        return "bg-blue-500 text-white hover:bg-blue-700"
+      case "PENDING":
+        return "bg-yellow-500 text-white hover:bg-yellow-700"
+      case "FAILED":
         return "bg-red-500 text-white hover:bg-red-700"
-      case "En Proceso":
-        return "bg-orange-500 text-white bg-orange-700"
-      case "Completado":
-        return "bg-green-500 text-white bg-green-700"
+      case "CANCELLED":
+        return "bg-gray-500 text-white hover:bg-gray-700"
       default:
         return "bg-gray-500 text-white"
     }
   }
 
+  const getStatusLabel = (status: IOrder["status"]) => {
+    switch (status) {
+      case "SUCCESS":
+        return "Completado"
+      case "PROCESSING":
+        return "En Proceso"
+      case "PENDING":
+        return "Pendiente"
+      case "FAILED":
+        return "Fallido"
+      case "CANCELLED":
+        return "Cancelado"
+      default:
+        return status
+    }
+  }
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-CO", {
+    return new Intl.NumberFormat("es-AR", {
       style: "currency",
-      currency: "COP",
+      currency: "ARS",
       minimumFractionDigits: 0,
     }).format(amount)
   }
@@ -45,13 +66,13 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
       <CardContent className="p-3 md:p-4">
         <div className="space-y-3 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
           {/* Primera fila: Botón expandir, ID de orden y badge de estado */}
-          <div className="flex items-center justify-between" >
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 md:gap-4">
-              <Button variant="ghost" size="sm"  className="p-1">
+              <Button variant="ghost" size="sm" className="p-1">
                 {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </Button>
-              <span className="font-medium text-sm md:text-base">Orden {order.orderId}</span>
-              <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
+              <span className="font-medium text-sm md:text-base">Orden #{order.orderNumber}</span>
+              <Badge className={getStatusColor(order.status)}>{getStatusLabel(order.status)}</Badge>
             </div>
           </div>
 
@@ -61,76 +82,140 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
               <span className="block font-medium text-foreground truncate">{order.customerName}</span>
             </div>
             <div>
-              <span className="block">{format(new Date(order.createdAt), "dd/MM/yyyy", { locale: es })}</span>
+              <span className="block">{format(new Date(order.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}</span>
             </div>
             <div>
-              <span className="block font-semibold text-foreground">{formatCurrency(order.total)}</span>
+              <span className="block font-semibold text-foreground">{formatCurrency(order.totalAmount)}</span>
             </div>
             <div>
-              <span className="block">{order.products.length} prod.</span>
+              <span className="block">{order.items.length} prod.</span>
             </div>
           </div>
         </div>
 
         {isExpanded && (
           <div className="mt-4 md:mt-6 pl-4 md:pl-8 border-t pt-4">
-            <div className="mb-4 md:flex md:justify-between md:mb-0">
+            <div className="mb-4 md:flex md:justify-between md:items-center md:mb-6">
               <div>
                 <h4 className="font-medium mb-2">Detalles de la orden</h4>
               </div>
               <div className="flex justify-center md:justify-end mb-4">
-                <Select value={order.status} onValueChange={(newStatus) => onStatusChange(order.orderId, newStatus)}>
+                <Select 
+                  value={order.status} 
+                  onValueChange={(newStatus: IOrder["status"]) => onStatusChange(order._id, newStatus)}
+                >
                   <SelectTrigger className="w-full md:w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="En Proceso">En Proceso</SelectItem>
-                    <SelectItem value="Cancelado">Cancelado</SelectItem>
-                    <SelectItem value="Completado">Completado</SelectItem>
+                    <SelectItem value="PENDING">Pendiente</SelectItem>
+                    <SelectItem value="PROCESSING">En Proceso</SelectItem>
+                    <SelectItem value="SUCCESS">Completado</SelectItem>
+                    <SelectItem value="FAILED">Fallido</SelectItem>
+                    <SelectItem value="CANCELLED">Cancelado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {order.products.map((product, index) => (
-              <div key={index} className="mb-4 p-3 md:p-4 bg-gray-200 rounded-lg">
-                <h5 className="font-semibold text-base md:text-lg mb-2">{product.name}</h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Cantidad: </span>
-                    <span>{product.quantity}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Precio: </span>
-                    <span>{formatCurrency(product.price)}</span>
-                  </div>
-                  <div className="sm:col-span-2 md:col-span-1">
-                    <span className="text-muted-foreground">Subtotal: </span>
-                    <span className="font-medium">{formatCurrency(product.price * product.quantity)}</span>
+            {/* Productos */}
+            <div className="space-y-3 mb-6">
+              {order.items.map((item, index) => (
+                <div key={index} className="flex gap-3 p-3 md:p-4 bg-gray-50 rounded-lg">
+                  {item.image && (
+                    <div className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden bg-gray-200">
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <h5 className="font-semibold text-base md:text-lg mb-2">{item.name}</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Cantidad: </span>
+                        <span>{item.quantity}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Precio: </span>
+                        <span>{formatCurrency(item.price)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Subtotal: </span>
+                        <span className="font-medium">{formatCurrency(item.price * item.quantity)}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
 
-            <div className="space-y-2 md:space-y-0 md:grid md:grid-cols-3 md:gap-4 mt-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Cliente: </span>
-                <span>{order.customerName}</span>
+            {/* Información adicional */}
+            <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Cliente: </span>
+                  <span className="font-medium">{order.customerName}</span>
+                </div>
+                {order.customerAddress && (
+                  <div>
+                    <span className="text-muted-foreground">Dirección: </span>
+                    <span>{order.customerAddress}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-muted-foreground">Fecha: </span>
+                  <span>{format(new Date(order.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}</span>
+                </div>
+                {order.viumiOrderNumber && (
+                  <div>
+                    <span className="text-muted-foreground">N° Orden Viumi: </span>
+                    <span className="font-mono text-xs">{order.viumiOrderNumber}</span>
+                  </div>
+                )}
+                {order.viumiOrderId && (
+                  <div>
+                    <span className="text-muted-foreground">ID Viumi: </span>
+                    <span className="font-mono text-xs">{order.viumiOrderId}</span>
+                  </div>
+                )}
+                {order.paymentId && (
+                  <div>
+                    <span className="text-muted-foreground">ID Pago: </span>
+                    <span>{order.paymentId}</span>
+                  </div>
+                )}
+                {order.authorizationCode && (
+                  <div>
+                    <span className="text-muted-foreground">Código Autorización: </span>
+                    <span className="font-mono">{order.authorizationCode}</span>
+                  </div>
+                )}
+                {order.refNumber && (
+                  <div>
+                    <span className="text-muted-foreground">Ref. Número: </span>
+                    <span className="font-mono">{order.refNumber}</span>
+                  </div>
+                )}
+                {order.paymentStatus && (
+                  <div>
+                    <span className="text-muted-foreground">Estado Pago: </span>
+                    <span className={order.paymentStatus === "APPROVED" ? "text-green-600 font-medium" : ""}>
+                      {order.paymentStatus}
+                    </span>
+                  </div>
+                )}
               </div>
-              <div>
-                <span className="text-muted-foreground">Teléfono: </span>
-                <span>{order.customerPhone}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Fecha: </span>
-                <span>{format(new Date(order.createdAt), "dd/MM/yyyy", { locale: es })}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">OrderID Uala: </span>
-                <span>{order?.orderId_uala||"Sin OrderID"}</span>
-              </div>
-              <div className="md:text-right">
-                <span className="text-base md:text-lg font-semibold">Total: {formatCurrency(order.total)}</span>
+
+              {/* Link de checkout si está pendiente */}
+
+              {/* Total */}
+              <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                <span className="text-muted-foreground">Total:</span>
+                <span className="text-xl md:text-2xl font-bold">{formatCurrency(order.totalAmount)}</span>
               </div>
             </div>
           </div>

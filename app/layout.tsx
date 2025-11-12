@@ -7,7 +7,7 @@ import { AuthProvider } from "@/components/auth/auth-providers"
 
 export const metadata: Metadata = {
   title: "Cristal Shop",
-  description: "Plataforma completa para crear tu tienda online con gestión de productos y carrito de compras",
+  description: "Catalogo Web Cristal Shop",
   generator: 'next.js',
 }
 

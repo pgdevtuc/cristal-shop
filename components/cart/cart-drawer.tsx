@@ -7,6 +7,7 @@ import { useCart } from "@/contexts/cart-context"
 import { CartItem } from "./cart-item"
 import { CheckoutForm } from "./checkout-form"
 import { ShoppingBag, CreditCard } from "lucide-react"
+import { toast } from "sonner"
 
 interface CartDrawerProps {
   isOpen: boolean
@@ -15,6 +16,7 @@ interface CartDrawerProps {
 
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const [showCheckout, setShowCheckout] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const { items, getTotalPrice } = useCart()
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -39,6 +41,84 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       setShowCheckout(false)
     }
   }, [totalItems])
+
+  // Función para procesar el checkout
+  const handleCheckout = async (checkoutData: any) => {
+    setIsProcessing(true)
+    
+    try {
+      // Preparar los productos para el backend
+      const products = items.map(item => ({
+        productId: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image
+      }))
+
+      // Hacer la petición al backend
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          products,
+          customerName: checkoutData.name,
+          customerAddress: checkoutData.address || null,
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        // Manejar errores de stock u otros errores
+        if (result.details && Array.isArray(result.details)) {
+          // Mostrar errores específicos de stock
+          const errorMessages = result.details.map((err: any) => 
+            `${err.name || 'Producto'}: ${err.error}`
+          ).join('\n')
+          
+          toast.error("Error en el checkout", {
+            description: errorMessages,
+            position: 'top-right',
+          })
+        } else {
+          throw new Error(result.error || 'Error en el checkout')
+        }
+        return { success: false, error: result.error }
+      }
+
+      // Checkout exitoso - Obtener URL de checkout de Viumi
+      const checkoutUrl = result.checkout?.data?.attributes?.links?.checkout
+
+      if (checkoutUrl) {
+        toast.success("¡Redirigiendo al pago!", {
+          description: "Serás redirigido a la página de pago...",
+          position: 'top-right',
+        })
+
+        // Redirigir después de un breve delay
+        setTimeout(() => {
+          window.location.href = checkoutUrl
+        }, 1500)
+
+        return { success: true, data: result.checkout, checkoutUrl }
+      } else {
+        throw new Error('No se recibió la URL de checkout')
+      }
+
+    } catch (error) {
+      console.error('Error en checkout:', error)
+      toast.error("Error", {
+        description: error instanceof Error ? error.message : "Ocurrió un error al procesar tu pedido",
+        position: 'top-right',
+      })
+      return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -67,6 +147,8 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               totalPrice={totalPrice}
               onBack={() => setShowCheckout(false)}
               onClose={handleClose}
+              onCheckout={handleCheckout}
+              isProcessing={isProcessing}
             />
           ) : (
             <>
@@ -85,7 +167,11 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowCheckout(true)}>
+                  <Button 
+                    className="w-full bg-emerald-600 hover:bg-emerald-700" 
+                    onClick={() => setShowCheckout(true)}
+                    disabled={isProcessing}
+                  >
                     <CreditCard className="h-4 w-4 mr-2" />
                     Proceder al Pago
                   </Button>

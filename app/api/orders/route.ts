@@ -5,43 +5,84 @@ import Product from "@/lib/models/product"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
+import type { PipelineStage } from "mongoose"; // 👈 importante
+
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session || (session.user as any).role !== "admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const session = await getServerSession(authOptions);
+  if (!session || (session.user as any).role !== "admin") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    await connectDB()
+    await connectDB();
 
-    const { searchParams } = new URL(request.url)
-    const phone = searchParams.get("phone")
-    const status = searchParams.get("status")
-    const dateFrom = searchParams.get("dateFrom")
-    const dateTo = searchParams.get("dateTo")
+    const { searchParams } = new URL(request.url);
+    const phone = searchParams.get("phone");
+    const status = searchParams.get("status");
+    const dateFrom = searchParams.get("dateFrom");
+    const dateTo = searchParams.get("dateTo");
 
-    const query: any = {}
+    const baseMatch: Record<string, any> = {};
+    if (phone) baseMatch.customerPhone = { $regex: phone, $options: "i" };
+    if (status && status !== "Todos") baseMatch.status = status;
 
-    if (phone) {
-      query.customerPhone = { $regex: phone, $options: "i" }
+    // Si NO hay fechas, podés usar find normal
+    if (!dateFrom || !dateTo) {
+      const orders = await Order.find(baseMatch).sort({ createdAt: -1 }).lean();
+      return NextResponse.json(orders);
     }
 
-    if (status && status !== "Todos") {
-      query.status = status
-    }
+    const from = new Date(dateFrom);
+    const to = new Date(dateTo);
+    const tz = "America/Argentina/Buenos_Aires";
 
-    if (dateFrom && dateTo) {
-      const startDate = new Date(dateFrom)
-      const endDate = new Date(dateTo)
-      endDate.setDate(endDate.getDate() + 1)
-      query.createdAt = { $gte: startDate, $lt: endDate }
-    }
+    const pipeline: PipelineStage[] = [];
 
-    const orders = await Order.find(query).sort({ createdAt: -1 }).lean()
+    // 1) match base
+    pipeline.push({ $match: baseMatch });
 
-    return NextResponse.json(orders)
+    // 2) match por rango de DÍAS en horario AR
+    pipeline.push({
+      $match: {
+        $expr: {
+          $and: [
+            {
+              $gte: [
+                { $dateTrunc: { date: "$createdAt", unit: "day", timezone: tz } },
+                { $dateTrunc: { date: from, unit: "day", timezone: tz } },
+              ],
+            },
+            {
+              $lt: [
+                { $dateTrunc: { date: "$createdAt", unit: "day", timezone: tz } },
+                {
+                  $dateAdd: {
+                    startDate: { $dateTrunc: { date: to, unit: "day", timezone: tz } },
+                    unit: "day",
+                    amount: 1,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    // 3) sort (usar literal -1)
+    pipeline.push({ $sort: { createdAt: -1 as -1 } });
+    // Alternativa: pipeline.push({ $sort: { createdAt: -1 } as const });
+
+    const orders = await Order.aggregate(pipeline);
+    console.log("Fetched orders with aggregation pipeline:", orders);
+    return NextResponse.json(orders);
   } catch (error) {
-    console.error("Error fetching orders:", error)
-    return NextResponse.json({ error: "Error fetching orders" }, { status: 500 })
+    console.error("Error fetching orders:", error);
+    return NextResponse.json({ error: "Error fetching orders" }, { status: 500 });
   }
 }
+
+
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)

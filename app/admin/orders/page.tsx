@@ -11,7 +11,7 @@ import { IOrder } from "@/types/order"
 import { AdminHeader } from "@/components/admin/AdminHeader"
 import { OrderStats } from "@/components/orders/OrderStats"
 import { format as formatDate } from "date-fns"
-import type { DateRange } from "react-day-picker" 
+import type { DateRange } from "react-day-picker"
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<IOrder[]>([])
@@ -36,9 +36,9 @@ export default function OrdersPage() {
 
       // Enviar rango de fechas si existe (formato yyyy-MM-dd para evitar TZ issues)
       if (dateRange?.from)
-        params.append("dateFrom", formatDate(dateRange.from, "yyyy-MM-dd"))
+        params.append("dateFrom", dateRange.from.toISOString());
       if (dateRange?.to)
-        params.append("dateTo", formatDate(dateRange.to, "yyyy-MM-dd"))
+        params.append("dateTo", dateRange.to.toISOString());
 
       const response = await fetch(`/api/orders?${params.toString()}`)
       if (response.ok) {
@@ -49,7 +49,7 @@ export default function OrdersPage() {
         throw new Error("Response not ok")
       }
     } catch (error) {
-      toast.error("Error",{position:"top-center",style:{color:"red"},duration:3000})
+      toast.error("Error", { position: "top-center", style: { color: "red" }, duration: 3000 })
     } finally {
       setIsLoading(false)
     }
@@ -75,14 +75,14 @@ export default function OrdersPage() {
       })
 
       if (response.ok) {
-        toast.success("Estado de la orden actualizado",{ position: "top-center", style: { color: "green" }, duration: 3000 })
+        toast.success("Estado de la orden actualizado", { position: "top-center", style: { color: "green" }, duration: 3000 })
         SetStatusRefresh(newStatus)
         fetchOrders()
       } else {
         throw new Error("Update failed")
       }
     } catch (error) {
-      toast("Error al actualizar el estado",{position:"top-center",style:{color:"red"},duration:3000})
+      toast("Error al actualizar el estado", { position: "top-center", style: { color: "red" }, duration: 3000 })
     }
   }
 

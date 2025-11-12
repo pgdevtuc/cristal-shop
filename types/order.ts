@@ -1,19 +1,26 @@
-export interface IOrderProduct {
+export interface IOrderItem {
+  productId: string
   name: string
-  quantity: number
   price: number
+  quantity: number
+  image: string
 }
 
 export interface IOrder {
   _id: string
-  orderId: string
+  orderNumber: string
   customerName: string
-  customerPhone: string
-  products: IOrderProduct[]
-  status: "En Proceso" | "Cancelado" | "Completado"
-  total: number
-  orderId_uala?: string
+  customerAddress?: string
+  items: IOrderItem[]
+  totalAmount: number
+  status: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED"
+  viumiOrderId?: string
+  viumiOrderNumber?: string
+  paymentId?: number
+  authorizationCode?: string
+  refNumber?: string
+  paymentStatus?: string
+  checkoutUrl?: string
   createdAt: Date
-  updatedAt?: Date
+  updatedAt: Date
 }
-

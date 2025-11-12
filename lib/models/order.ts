@@ -1,80 +1,118 @@
 import mongoose, { type Document, Schema } from "mongoose"
 
-export interface IOrderProduct {
+export interface IOrderItem {
+  productId: string
   name: string
-  quantity: number
   price: number
+  quantity: number
+  image: string
 }
 
 export interface IOrder extends Document {
-  orderId: string
+  _id: string
+  orderNumber: string
   customerName: string
-  customerPhone: string
-  products: IOrderProduct[]
-  status: "En Proceso" | "Cancelado" | "Completado"
-  total: number
-  orderId_uala: string
+  customerAddress?: string
+  items: IOrderItem[]
+  totalAmount: number
+  status: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED"
+  viumiOrderId?: string
+  viumiOrderNumber?: string
+  paymentId?: number
+  authorizationCode?: string
+  refNumber?: string
+  paymentStatus?: string
+  checkoutUrl?: string
   createdAt: Date
   updatedAt: Date
 }
 
-const ProductSchema = new Schema({
-  name: { type: String, required: true },
-  quantity: { type: Number, required: true, min: 1 },
-  price: { type: Number, required: true, min: 0 },
-})
-
 const OrderSchema = new Schema<IOrder>(
   {
-    orderId: {
+    orderNumber: {
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
     customerName: {
       type: String,
       required: true,
       trim: true,
     },
-    customerPhone: {
+    customerAddress: {
       type: String,
-      required: true,
       trim: true,
-      index: true,
     },
-    products: {
-      type: [ProductSchema],
-      required: true,
-      validate: {
-        validator: (products: IOrderProduct[]) => products && products.length > 0,
-        message: "Una orden debe tener al menos un producto",
+    items: [
+      {
+        productId: {
+          type: String,
+          required: true,
+        },
+        name: {
+          type: String,
+          required: true,
+        },
+        price: {
+          type: Number,
+          required: true,
+        },
+        quantity: {
+          type: Number,
+          required: true,
+        },
+        image: {
+          type: String,
+        },
       },
+    ],
+    totalAmount: {
+      type: Number,
+      required: true,
     },
     status: {
       type: String,
-      enum: ["En Proceso", "Cancelado", "Completado"],
-      default: "En Proceso",
+      enum: ["PENDING", "PROCESSING", "SUCCESS", "FAILED", "CANCELLED"],
+      default: "PENDING",
+    },
+    viumiOrderId: {
+      type: String,
       index: true,
     },
-    total: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    orderId_uala: {
+    viumiOrderNumber: {
       type: String,
-      required: false,
-      trim: true,
     },
+    paymentId: {
+      type: Number,
+    },
+    authorizationCode: {
+      type: String,
+    },
+    refNumber: {
+      type: String,
+    },
+    paymentStatus: {
+      type: String,
+    },
+    checkoutUrl: {
+      type: String,
+    },
+    createdAt: {
+      type: Date,
+      required: true,
+    },
+    updatedAt: {
+      type: Date,
+      required: true,
+    }
   },
   {
-    timestamps: true,
-  },
+    timestamps: false, // Deshabilitamos timestamps automáticos para controlarlos manualmente
+  }
 )
 
+// Índices
+OrderSchema.index({ status: 1 })
 OrderSchema.index({ createdAt: -1 })
-OrderSchema.index({ customerPhone: 1, createdAt: -1 })
-OrderSchema.index({ status: 1, createdAt: -1 })
 
-export default mongoose.models.Order || mongoose.model<IOrder>("Order", OrderSchema)
+export default mongoose.models.Order || mongoose.model<IOrder>("Order", OrderSchema, "orders")

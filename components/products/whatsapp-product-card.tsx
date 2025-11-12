@@ -54,7 +54,7 @@ export function WhatsAppProductCard({ product }: WhatsAppProductCardProps) {
               alt={product.name}
               width={400}
               height={250}
-              className="w-full h-32 sm:h-40 md:h-44 lg:h-48 object-cover transition-all duration-300 ease-in-out group-hover:brightness-110"
+              className="w-full h-32 sm:h-40 md:h-44 lg:h-48 object-contain transition-all duration-300 ease-in-out group-hover:brightness-110"
             />
             {/*  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 ease-in-out flex items-center justify-center">
             <div className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-sm font-medium">
