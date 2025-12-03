@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState,Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { ShopHeader } from "@/components/layout/whatsapp-header"
 import { Button } from "@/components/ui/button"
@@ -97,7 +97,9 @@ export default function ProductClient({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ShopHeader />
+      <Suspense fallback={<div>Loading...</div>}>
+        <ShopHeader />
+      </Suspense>
 
       {/* Breadcrumb */}
       <div className="bg-white border-b">
