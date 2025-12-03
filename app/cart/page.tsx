@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { Suspense } from "react"
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -107,7 +107,9 @@ export default function CartPage() {
     if (totalItems === 0) {
         return (
             <div className="min-h-screen bg-gray-50">
-                <ShopHeader />
+                <Suspense fallback={<div>Loading...</div>}>
+                    <ShopHeader />
+                </Suspense>
                 <div className="max-w-4xl mx-auto px-4 py-16">
                     <div className="bg-white rounded-2xl shadow-sm p-8 md:p-12 text-center">
                         <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
