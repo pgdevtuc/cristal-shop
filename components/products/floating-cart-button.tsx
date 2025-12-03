@@ -28,7 +28,7 @@ export function FloatingCartButton() {
     <>
       <Button
         onClick={() => setIsCartOpen(true)}
-        className="floating-cart-btn bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 md:hidden"
+        className="floating-cart-btn bg-primary hover:bg-primary/80 text-white px-8 py-3 md:hidden"
         style={{
           position: "fixed",
           bottom: "20px",
