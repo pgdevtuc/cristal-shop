@@ -1,5 +1,5 @@
 "use client"
-import {ShopHeader } from "@/components/layout/whatsapp-header"
+import { ShopHeader } from "@/components/layout/whatsapp-header"
 import { WhatsAppProductCatalog } from "@/components/products/whatsapp-product-catalog"
 import { FloatingCartButton } from "@/components/products/floating-cart-button"
 import { Suspense } from "react"
@@ -13,7 +13,9 @@ export default function HomePage() {
         <ShopHeader />
       </Suspense>
       <main>
-        <WhatsAppProductCatalog />
+        <Suspense fallback={<div>Loading...</div>}>
+          <WhatsAppProductCatalog />
+        </Suspense>
       </main>
       <FloatingCartButton />
     </div>
