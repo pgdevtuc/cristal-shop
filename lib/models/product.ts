@@ -1,9 +1,10 @@
 import mongoose, { type Document, Schema } from "mongoose"
 
 export interface IProduct extends Document {
-  _id: string
   name: string
-  image: string
+  image: string[]
+  colors?: string[]
+  features?: string[]
   stock: number
   category: string
   description: string
@@ -21,8 +22,16 @@ const ProductSchema = new Schema<IProduct>(
       trim: true,
     },
     image: {
-      type: String,
-      default: "",
+      type: [String],
+      default: [],
+    },
+    colors: {
+      type: [String],
+      default: [],
+    },
+    features: {
+      type: [String],
+      default: [],
     },
     stock: {
       type: Number,

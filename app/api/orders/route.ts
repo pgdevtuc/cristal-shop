@@ -7,7 +7,15 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
 import type { PipelineStage } from "mongoose"; // 👈 importante
 
-export async function GET(request: NextRequest) {
+// Helper to get Argentina date (UTC-3) as ISO string with offset
+function getArgentinaDate() {
+  const now = new Date();
+  const argentinaTime = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  const isoString = argentinaTime.toISOString().slice(0, -1);
+  return isoString + "-03:00";
+}
+
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any).role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -16,24 +24,32 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const phone = searchParams.get("phone");
     const status = searchParams.get("status");
-    const dateFrom = searchParams.get("dateFrom");
-    const dateTo = searchParams.get("dateTo");
+    const shipping = searchParams.get("shipping");
+    const dateFromStr = searchParams.get("dateFrom");
+    const dateToStr = searchParams.get("dateTo");
 
     const baseMatch: Record<string, any> = {};
-    if (phone) baseMatch.customerPhone = { $regex: phone, $options: "i" };
+    if (phone) {
+      baseMatch.$or = [
+        { customerPhone: { $regex: phone, $options: "i" } },
+        { customerName: { $regex: phone, $options: "i" } },
+      ];
+    }
     if (status && status !== "Todos") baseMatch.status = status;
+    if (shipping === "true") baseMatch.shipping = true;
+    if (shipping === "false") baseMatch.shipping = false;
 
     // Si NO hay fechas, podés usar find normal
-    if (!dateFrom || !dateTo) {
+    if (!dateFromStr || !dateToStr) {
       const orders = await Order.find(baseMatch).sort({ createdAt: -1 }).lean();
       return NextResponse.json(orders);
     }
 
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
+    const from = new Date(dateFromStr as string);
+    const to = new Date(dateToStr as string);
     const tz = "America/Argentina/Buenos_Aires";
 
     const pipeline: PipelineStage[] = [];
@@ -92,43 +108,81 @@ export async function POST(request: NextRequest) {
     await connectDB()
 
     const body = await request.json()
-    const { customerName, customerPhone, products } = body
-
-    if (!customerName || !customerPhone || !products || products.length === 0) {
-      return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 })
-    }
-
-    for (const product of products) {
-      const existingProduct = await Product.findOne({ name: product.name })
-      if (!existingProduct) {
-        return NextResponse.json({ error: `Producto "${product.name}" no encontrado` }, { status: 400 })
-      }
-      if (existingProduct.stock < product.quantity) {
-        return NextResponse.json({ error: `Stock insuficiente para "${product.name}"` }, { status: 400 })
-      }
-    }
-
-    // Generate unique order ID
-    const orderId = `#68b${Math.random().toString(36).substr(2, 9)}${Date.now().toString(36)}`
-
-    // Calculate total
-    const total = products.reduce((sum: number, product: any) => sum + product.price * product.quantity, 0)
-
-    const newOrder = new Order({
-      orderId,
+    const {
       customerName,
       customerPhone,
-      products,
-      total,
-    })
+      items,
+      shipping = false,
+      customerAddress,
+      status,
+    } = body as any
 
-    const savedOrder = await newOrder.save()
-
-    for (const product of products) {
-      await Product.findOneAndUpdate({ name: product.name }, { $inc: { stock: -product.quantity } })
+    if (!customerName || !customerPhone || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 })
+    }
+    if (shipping && (!customerAddress || !String(customerAddress).trim())) {
+      return NextResponse.json({ error: "La dirección es requerida cuando hay envío" }, { status: 400 })
     }
 
-    return NextResponse.json(savedOrder, { status: 201 })
+    // Validate stock and compute totals using DB pricing
+    const orderItems: {
+      productId: string
+      name: string
+      price: number
+      quantity: number
+      image?: string
+    }[] = []
+    let computedTotal = 0
+
+    for (const item of items) {
+      const product = await Product.findById(item.productId)
+      if (!product) {
+        return NextResponse.json({ error: `Producto no encontrado (id: ${item.productId})` }, { status: 400 })
+      }
+      const qty = Number(item.quantity) || 0
+      if (qty <= 0) {
+        return NextResponse.json({ error: `Cantidad inválida para el producto ${product.name}` }, { status: 400 })
+      }
+      if (product.stock < qty) {
+        return NextResponse.json({ error: `Stock insuficiente para "${product.name}"` }, { status: 400 })
+      }
+
+      const unitPrice = product.salePrice > 0 ? product.salePrice : product.price
+      orderItems.push({
+        productId: product._id.toString(),
+        name: product.name,
+        price: unitPrice,
+        quantity: qty,
+        image: product.image,
+      })
+      computedTotal += unitPrice * qty
+    }
+
+    // Generate unique order number
+    const orderCount = await Order.countDocuments()
+    const orderNumber = `ORD-${Date.now()}-${String(orderCount + 1).padStart(5, "0")}`
+
+    const nowAR = getArgentinaDate()
+
+    const newOrder = await Order.create({
+      orderNumber,
+      customerName,
+      customerPhone,
+      shipping: Boolean(shipping),
+      customerAddress: shipping ? customerAddress : undefined,
+      items: orderItems,
+      totalAmount: computedTotal,
+      status: status ?? "PENDING",
+      createdAt: nowAR,
+      updatedAt: nowAR,
+    })
+
+    // Decrement stock
+    for (const item of items) {
+      await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -Number(item.quantity) } })
+    }
+
+    return NextResponse.json(newOrder, { status: 201 })
   } catch (error) {
     console.error("Error creating order:", error)
     return NextResponse.json({ error: "Error creating order" }, { status: 500 })
@@ -143,19 +197,138 @@ export async function PUT(request: NextRequest) {
     await connectDB()
 
     const body = await request.json()
-    const { orderId, status } = body
+    const {
+      orderId,
+      orderNumber,
+      status,
+      customerName,
+      customerPhone,
+      shipping,
+      customerAddress,
+      items,
+    } = body as any
 
-    if (!orderId || !status) {
-      return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 })
+    const query = orderId ? { _id: orderId } : orderNumber ? { orderNumber } : null
+    if (!query) {
+      return NextResponse.json({ error: "Falta orderId u orderNumber" }, { status: 400 })
     }
 
-    const updatedOrder = await Order.findOneAndUpdate({ orderId }, { status }, { new: true, runValidators: true })
+    // Path 1: solo actualizar estado (comportamiento previo)
+    if (!Array.isArray(items)) {
+      if (!status) {
+        return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 })
+      }
 
-    if (!updatedOrder) {
+      const updatedOrder = await Order.findOneAndUpdate(
+        query,
+        { status, updatedAt: getArgentinaDate() },
+        { new: true, runValidators: true },
+      )
+
+      if (!updatedOrder) {
+        return NextResponse.json({ error: "Order not found" }, { status: 404 })
+      }
+
+      return NextResponse.json(updatedOrder)
+    }
+
+    // Path 2: Edición completa (nombre, teléfono, envío, dirección, productos)
+    if (!customerName || !customerPhone || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 })
+    }
+    if (shipping && (!customerAddress || !String(customerAddress).trim())) {
+      return NextResponse.json({ error: "La dirección es requerida cuando hay envío" }, { status: 400 })
+    }
+
+    const existingOrder = await Order.findOne(query)
+    if (!existingOrder) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 })
     }
 
-    return NextResponse.json(updatedOrder)
+    // Cantidades previas por producto
+    const prevQty = new Map<string, number>()
+    for (const it of existingOrder.items) {
+      prevQty.set(String(it.productId), Number(it.quantity) || 0)
+    }
+
+    // Validar nuevos items y calcular totales y deltas
+    const newIds = new Set<string>()
+    const productIds = Array.from(new Set<string>(items.map((it: any) => String(it.productId))))
+    const products = await Product.find({ _id: { $in: productIds } })
+    const prodMap = new Map<string, any>()
+    for (const p of products) prodMap.set(String(p._id), p)
+
+    const orderItems: {
+      productId: string
+      name: string
+      price: number
+      quantity: number
+      image?: string
+    }[] = []
+    let computedTotal = 0
+
+    for (const it of items) {
+      const id = String(it.productId)
+      newIds.add(id)
+      const p = prodMap.get(id)
+      if (!p) {
+        return NextResponse.json({ error: `Producto no encontrado (id: ${id})` }, { status: 400 })
+      }
+      const qNew = Number(it.quantity) || 0
+      if (qNew <= 0) {
+        return NextResponse.json({ error: `Cantidad inválida para el producto ${p.name}` }, { status: 400 })
+      }
+      const qPrev = prevQty.get(id) || 0
+      const delta = qNew - qPrev
+      if (delta > 0 && p.stock < delta) {
+        return NextResponse.json({ error: `Stock insuficiente para "${p.name}". Disponible: ${p.stock}, solicitado extra: ${delta}` }, { status: 400 })
+      }
+
+      const unitPrice = p.salePrice > 0 ? p.salePrice : p.price
+      orderItems.push({
+        productId: String(p._id),
+        name: p.name,
+        price: unitPrice,
+        quantity: qNew,
+        image: p.image,
+      })
+      computedTotal += unitPrice * qNew
+    }
+
+    // Aplicar ajustes de stock por delta
+    // a) Productos editados/agregados
+    for (const it of items) {
+      const id = String(it.productId)
+      const qNew = Number(it.quantity) || 0
+      const qPrev = prevQty.get(id) || 0
+      const delta = qNew - qPrev
+      if (delta !== 0) {
+        await Product.findByIdAndUpdate(id, { $inc: { stock: -delta } })
+      }
+    }
+    // b) Productos removidos
+    for (const [id, qPrev] of prevQty.entries()) {
+      if (!newIds.has(id) && qPrev > 0) {
+        await Product.findByIdAndUpdate(id, { $inc: { stock: qPrev } })
+      }
+    }
+
+    const nowAR = getArgentinaDate()
+    const updated = await Order.findOneAndUpdate(
+      query,
+      {
+        customerName,
+        customerPhone,
+        shipping: Boolean(shipping),
+        customerAddress: shipping ? customerAddress : undefined,
+        items: orderItems,
+        totalAmount: computedTotal,
+        updatedAt: nowAR,
+      },
+      { new: true, runValidators: true },
+    )
+
+    return NextResponse.json(updated)
   } catch (error) {
     console.error("Error updating order:", error)
     return NextResponse.json({ error: "Error updating order" }, { status: 500 })

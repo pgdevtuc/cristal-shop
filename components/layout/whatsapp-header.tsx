@@ -1,94 +1,154 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Phone, MoreVertical, User, ShoppingCart } from "lucide-react"
+import { Search, ShoppingCart, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useCart } from "@/contexts/cart-context"
-import { CartDrawer } from "@/components/cart/cart-drawer"
-import { usePathname } from "next/navigation"
+import { Input } from "@/components/ui/input"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useSearchParams } from "next/navigation"
+import { useCart } from "@/contexts/cart-context"
 
-export function WhatsAppHeader() {
-  const pathname = usePathname();
-  const [isCartOpen, setIsCartOpen] = useState(false)
-  const { items } = useCart()
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
+interface ShopHeaderProps {
+  searchTerm?: string
+  onSearchChange?: (term: string) => void
+  onSearch?: () => void
+}
 
-  const param=useSearchParams();
-  const id = param.get("id");
+export function ShopHeader({
+  searchTerm = "",
+  onSearchChange,
+  onSearch,
+}: ShopHeaderProps) {
+  const [localSearch, setLocalSearch] = useState(searchTerm)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { items, getTotalPrice } = useCart()
 
-  const buildUrl = (basePath: string) => {
-    return id ? `${basePath}?id=${id}` : basePath
+  const handleSearchChange = (value: string) => {
+    setLocalSearch(value)
+    onSearchChange?.(value)
   }
 
-  // Cerrar carrito automáticamente si se vacía
-  useEffect(() => {
-    if (totalItems === 0) {
-      setIsCartOpen(false)
-    }
-  }, [totalItems])
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
 
+    const trimmedSearch = localSearch.trim()
+
+    const params = new URLSearchParams()
+    const category = searchParams.get('category')
+    const pf = searchParams.get("priceFilter")
+    const mp = searchParams.get("maxPrice")
+
+    params.set('q', encodeURIComponent(trimmedSearch))
+    if (category) params.set('category', category)
+    if (pf) params.set('priceFilter', pf)
+    if (mp) params.set('maxPrice', mp)
+
+    if (trimmedSearch) {
+      router.push(`/?${params.toString()}`)
+    } else {
+      router.push("/")
+    }
+    onSearch?.()
+  }
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("es-CO", {
+      style: "decimal",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price)
+  }
+
+  console.log(items)
   return (
     <>
-      <header className="bg-emerald-600 text-white fixed top-0 left-0 right-0 z-40">
-        {/* Top bar con branding de la plataforma */}
-        <div className="bg-emerald-700 px-4 py-1 text-xs flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <span className="text-emerald-200">Powered by</span>
-            <span className="font-semibold text-white">Waichatt</span>
-          </div>
-          <Link href={buildUrl("/login")} className="text-emerald-200 hover:text-white flex items-center space-x-1">
-            <User className="h-3 w-3" />
-            <span>Admin</span>
-          </Link>
-        </div>
-
-        {/* Header principal estilo WhatsApp */}
-        <div className="flex items-center px-4 py-3">
-          <Link href={pathname.includes("product") ? buildUrl("/") : buildUrl("#")}>
-            <Button variant="ghost" size="sm" className="text-white hover:bg-emerald-700 p-2 mr-2">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex items-center space-x-3 flex-1">
-            <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-              <div className="w-8 h-8 bg-gradient-to-r rounded-full flex items-center justify-center text-center">
-                <Image src="/images/CRISTAL_LOGO.webp" width={40} height={40} alt="logo" />
+      <header className="bg-white border-b-2 border-red-600 top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between gap-4">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-1 flex-shrink-0">
+              <span className="text-xl md:text-[25px] font-bold text-gray-900 tracking-tight">CRISTAL</span>
+              <div className="w-10 h-10 md:w-8 md:h-10 rounded-full flex items-center justify-center">
+                <Image src="/images/CRISTAL_LOGO.webp" alt="" width={150} height={150} className="h-full w-full" />
               </div>
-            </div>
-            <div className="flex-1">
-              <h1 className="font-semibold text-white">Cristal Shop</h1>
-              <p className="text-xs text-emerald-100">Tienda en línea</p>
+              <span className="text-lg md:text-[25px] font-bold text-gray-900 tracking-tight">SHOP</span>
+            </Link>
+
+            {/* Search Bar */}
+            <form onSubmit={handleSubmit} className="flex-1 max-w-2xl hidden sm:flex">
+              <div className="flex w-full">
+                <Input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={localSearch}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="rounded-r-none border-r-0 border-gray-300 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 h-10"
+                />
+                <Button type="submit" className="rounded-l-none bg-red-600 hover:bg-red-700 h-10 px-6">
+                  <Search className="h-5 w-5" />
+                </Button>
+              </div>
+            </form>
+
+            {/* Right Icons */}
+            <div className="flex items-center gap-2 md:gap-4">
+              {/* Mobile Search Button */}
+              <Button variant="ghost" size="sm" className="sm:hidden text-red-600 hover:bg-red-50 p-2">
+                <Search className="h-5 w-5" />
+              </Button>
+
+              {/* Desktop Search Icon */}
+              <Button variant="ghost" size="sm" className="hidden sm:flex text-red-600 hover:bg-red-50 p-2">
+                <Search className="h-5 w-5" />
+              </Button>
+
+              {/* Cart */}
+              <Link href="/cart">
+                <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 p-2 flex items-center gap-1"
+                >
+                  <span className="text-sm font-medium hidden md:inline">${formatPrice(getTotalPrice())}</span>
+                  <div className="relative">
+                    <ShoppingCart className="h-5 w-5" />
+                    {items && items.length > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                        {items.length}
+                      </span>
+                    )}
+                  </div>
+                </Button>
+              </Link>
+
+              {/* User */}
+              <Link href="/admin">
+                <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 p-2">
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-emerald-700 p-2 relative"
-              onClick={() => setIsCartOpen(true)}
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                  {totalItems}
-                </span>
-              )}
-            </Button>
-            <Button variant="ghost" size="sm" className="text-white hover:bg-emerald-700 p-2">
-              <Phone className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-white hover:bg-emerald-700 p-2">
-              <MoreVertical className="h-5 w-5" />
-            </Button>
-          </div>
+          {/* Mobile Search Bar */}
+          <form onSubmit={handleSubmit} className="mt-3 sm:hidden">
+            <div className="flex w-full">
+              <Input
+                type="text"
+                placeholder="Buscar..."
+                value={localSearch}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="rounded-r-none border-r-0 border-gray-300 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
+              />
+              <Button type="submit" className="rounded-l-none bg-red-600 hover:bg-red-700 h-10 px-4">
+                <Search className="h-5 w-5" />
+              </Button>
+            </div>
+          </form>
         </div>
       </header>
-
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   )
 }

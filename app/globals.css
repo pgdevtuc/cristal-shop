@@ -10,8 +10,8 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 142.1 76.2% 36.3%;
-    --primary-foreground: 355.7 100% 97.3%;
+    --primary: 359.6 63.9% 46.7%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 98%;
     --secondary-foreground: 222.2 84% 4.9%;
     --muted: 210 40% 98%;
@@ -35,16 +35,6 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-}
-
-/* Fondo estilo WhatsApp con imagen personalizada */
-.whatsapp-bg {
-  background-color: #efeae2;
-  background-image: url("/images/whatsapp-image.png");
-  background-size: 300px 300px;
-  background-repeat: repeat;
-  background-position: 0 0;
-  position: relative;
 }
 
 /* Overlay para ajustar la opacidad de la imagen de fondo */
@@ -102,12 +92,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #10b981;
+  background: #df4343;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #059669;
+  background: #df4343;
 }
 
 /* Estilos para las cards de productos estilo WhatsApp - MÁS ANCHAS */

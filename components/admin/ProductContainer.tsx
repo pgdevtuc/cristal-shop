@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProductList } from "./product-list";
 import { Product } from "@/types/product";
 
@@ -39,6 +40,7 @@ export function ProductsContainer({
   const [page, setPage] = useState(1);
   const [limit] = useState(12);
   const [loading, setLoading] = useState(false);
+  const [stockFilter, setStockFilter] = useState<string>(""); // "", inStock, outOfStock, discounted, lowStock
 
   // Debounce del query con 1.5 segundos de delay
   const debouncedQuery = useDebounce(q, 1000);
@@ -51,7 +53,7 @@ export function ProductsContainer({
   async function fetchPage(p = page, query = debouncedQuery) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/products?page=${p}&limit=${limit}&q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/products?page=${p}&limit=${limit}&q=${encodeURIComponent(query)}&filter=${encodeURIComponent(stockFilter)}`);
       const data = await res.json();
 
       setItems(data.items || []);
@@ -65,22 +67,36 @@ export function ProductsContainer({
 
   useEffect(() => { 
     setPage(1); 
-  }, [debouncedQuery]);
+  }, [debouncedQuery, stockFilter]);
 
   useEffect(() => { 
     fetchPage(page, debouncedQuery); 
-  }, [page, debouncedQuery, refreshToken]);
+  }, [page, debouncedQuery, stockFilter, refreshToken]);
 
   return (
     <div className="space-y-6">
       {/* búsqueda + contador */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Input
           placeholder="Buscar por título/categoría…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="max-w-sm"
         />
+
+        <Select value={stockFilter} onValueChange={setStockFilter}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Todos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="inStock">En stock</SelectItem>
+            <SelectItem value="outOfStock">Agotados</SelectItem>
+            <SelectItem value="discounted">Con descuento</SelectItem>
+            <SelectItem value="lowStock">Por agotarse (1-2)</SelectItem>
+          </SelectContent>
+        </Select>
+
         {/* Mostrar loading si está buscando O si el query cambió pero aún no se ha disparado el debounce */}
         {(loading || (q !== debouncedQuery && q.length > 0)) && (
           <span className="text-sm text-muted-foreground">
@@ -133,7 +149,7 @@ export function ProductsContainer({
         onEdit={onEdit}
         onDelete={async (id) => {
           await onDelete(id);
-          fetchPage(); // refresh después de borrar
+          setItems(prev=>prev.filter(p=>p.id!==id))
         }}
       />
 

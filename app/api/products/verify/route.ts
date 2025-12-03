@@ -11,7 +11,7 @@ export async function GET(req: Request) {
         await connectDB();
         const findProduct = await product.findById(id)
         
-        if (findProduct) return NextResponse.json({ product: {...findProduct._doc,image:[findProduct.image],id:findProduct._id} }, { status: 200 })
+        if (findProduct) return NextResponse.json({ product: {...findProduct._doc,image:Array.isArray((findProduct as any).image) ? (findProduct as any).image : (findProduct as any).image ? [(findProduct as any).image] : [],id:findProduct._id} }, { status: 200 })
         return NextResponse.json({ message: "No se encontro el producto" }, { status: 400 })
 
     } catch (error) {

@@ -5,14 +5,15 @@ export interface IOrderItem {
   name: string
   price: number
   quantity: number
-  image: string
+  image?: string
 }
 
 export interface IOrder extends Document {
-  _id: string
   orderNumber: string
   customerName: string
   customerAddress?: string
+  customerPhone: string
+  shipping: boolean
   items: IOrderItem[]
   totalAmount: number
   status: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED"
@@ -42,6 +43,16 @@ const OrderSchema = new Schema<IOrder>(
     customerAddress: {
       type: String,
       trim: true,
+    },
+    customerPhone: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    shipping: {
+      type: Boolean,
+      required: true,
+      default: false,
     },
     items: [
       {

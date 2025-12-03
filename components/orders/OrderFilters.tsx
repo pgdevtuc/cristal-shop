@@ -17,6 +17,8 @@ interface OrderFiltersProps {
   setPhoneFilter: (value: string) => void
   statusFilter: string
   setStatusFilter: (value: string) => void
+  shippingFilter: string
+  setShippingFilter: (value: string) => void
   /** rango APLICADO */
   dateRange: DateRange | undefined
   /** set aplicado (lo llama el botón Filtrar) */
@@ -29,6 +31,8 @@ export default function OrderFilters({
   setPhoneFilter,
   statusFilter,
   setStatusFilter,
+  shippingFilter,
+  setShippingFilter,
   dateRange,
   setDateRange,
   onClearFilters,
@@ -79,16 +83,23 @@ export default function OrderFilters({
     setDateRange({ from: start, to: end })
   }
 
+    const handleLast30DaysDraft = () => {
+    const end = new Date()
+    const start = new Date()
+    start.setDate(end.getDate() - 29)
+    setDateRange({ from: start, to: end })
+  }
+
   return (
     <div className="space-y-4 mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Teléfono */}
         <div>
           <label className="text-sm font-medium text-muted-foreground mb-2 block">
-            Filtrar por teléfono
+            Filtrar por teléfono o nombre
           </label>
           <Input
-            placeholder="Número de teléfono..."
+            placeholder="Teléfono o nombre..."
             value={phoneFilter}
             onChange={(e) => setPhoneFilter(e.target.value)}
             className="w-full"
@@ -153,7 +164,7 @@ export default function OrderFilters({
           </Popover>
 
           {/* Atajos → modifican el borrador, no aplican hasta tocar Filtrar */}
-          <div className="mt-2 flex gap-2 flex-wrap">
+          <div className="mt-2 flex gap-1 flex-wrap">
             <Button
               variant="ghost"
               onClick={handleClearDraft}
@@ -175,7 +186,29 @@ export default function OrderFilters({
             >
               Últimos 7 días
             </Button>
+             <Button
+              variant="ghost"
+              onClick={handleLast30DaysDraft}
+              className="hover:bg-gray-200 text-xs"
+            >
+              Últimos 30 días
+            </Button>
           </div>
+        </div>
+
+        {/* Envío */}
+        <div>
+          <label className="text-sm font-medium text-muted-foreground mb-2 block">Envío</label>
+          <Select value={shippingFilter} onValueChange={setShippingFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Todos">Todos</SelectItem>
+              <SelectItem value="true">Con envío</SelectItem>
+              <SelectItem value="false">Sin envío</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Estado */}

@@ -9,6 +9,7 @@ interface CartItem {
   image: string
   stock?: number
   quantity: number
+  color?: string
 }
 
 interface CartState {

@@ -11,6 +11,8 @@ export interface IOrder {
   orderNumber: string
   customerName: string
   customerAddress?: string
+  customerPhone: string
+  shipping?:boolean
   items: IOrderItem[]
   totalAmount: number
   status: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED"

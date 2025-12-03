@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { X, Upload, FileText, Download } from "lucide-react"
+import { X, Upload, FileText, Download,Eye } from "lucide-react"
 import { toast } from "sonner"
 
 interface ImportDialogProps {
@@ -18,6 +18,8 @@ interface ImportDialogProps {
 export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [previewItems, setPreviewItems] = useState<any[] | null>(null)
+  const [step, setStep] = useState<"select" | "preview">("select")
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -29,36 +31,66 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
         selectedFile.name.endsWith(".xlsx")
       ) {
         setFile(selectedFile)
+        setPreviewItems(null)
+        setStep('select')
       } else {
         toast.error( "Solo se permiten archivos CSV y Excel (.xlsx)")
       }
     }
   }
 
-  const handleImport = async () => {
+  // Step 1: upload file and request a preview from the server
+  const handleUploadPreview = async () => {
     if (!file) return
-
     setLoading(true)
-    const formData = new FormData()
-    formData.append("file", file)
-
     try {
-      const response = await fetch("/api/products/import", {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch("/api/products/import?action=preview", {
         method: "POST",
         body: formData,
       })
 
       const result = await response.json()
-
       if (response.ok) {
-        toast.success(result.message)
+        // Expect result.items = parsed products
+        setPreviewItems(result.items || [])
+        setStep("preview")
+      } else {
+        toast.error(result.error || "Error al parsear el archivo")
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error("Error al procesar el archivo")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  console.log(previewItems)
+
+  // Step 2: confirm and save parsed items to DB
+  const handleConfirmImport = async () => {
+    if (!previewItems || previewItems.length === 0) return
+    setLoading(true)
+    try {
+      const response = await fetch("/api/products/import?action=save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: previewItems }),
+      })
+      const result = await response.json()
+      if (response.ok) {
+        toast.success(result.message || "Productos importados")
         onImportComplete()
         onClose()
       } else {
-        toast.error(result.error)
+        toast.error(result.error || "Error al guardar productos")
       }
-    } catch (error) {
-      toast.error("Error al procesar el archivo")
+    } catch (e) {
+      console.error(e)
+      toast.error("Error al guardar productos")
     } finally {
       setLoading(false)
     }
@@ -66,9 +98,9 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
 
   const downloadTemplate = () => {
     const csvContent =
-      "Nombre,Descripción,Precio,Categoría,URL de Imagen,Precio Oferta,Stock\n" +
-      "Smartphone Premium,Teléfono inteligente de última generación,899.99,Electrónicos,/placeholder.svg?height=300&width=300,749.99,15\n" +
-      "Laptop Gaming,Laptop para gaming con procesador Intel i7,1299.99,Computadoras,/placeholder.svg?height=300&width=300,,8"
+      "Nombre,Descripción,Precio,Categoría,URL de Imagen,Precio Oferta,Stock,Colores,Caracteristicas\n" +
+      "Smartphone Premium,Teléfono inteligente de última generación,85999,Electrónicos,https://imagen.com,749.99,15,Blanco;Gris,El mejor celular en 2025; La mejor camara\n" +
+      "Laptop Gaming,Laptop para gaming con procesador Intel i7,129999,Computadoras,https://imagen1.com,,8,Rojo,La mejor duración de bateria; Los mejores componentes"
 
     const blob = new Blob([csvContent], { type: "text/csv" })
     const url = window.URL.createObjectURL(blob)
@@ -96,9 +128,34 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
           </div>
 
           {file && (
-            <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
-              <FileText className="h-4 w-4 text-gray-600" />
-              <span className="text-sm text-gray-900">{file.name}</span>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                <FileText className="h-4 w-4 text-gray-600" />
+                <span className="text-sm text-gray-900">{file.name}</span>
+              </div>
+
+              {step === "preview" && previewItems && (
+                <div className="bg-white border rounded-md p-3 max-h-64 overflow-y-auto">
+                  <h5 className="font-medium mb-2">Vista previa ({previewItems.length})</h5>
+                  <div className="text-xs text-muted-foreground mb-2">Revisa las filas antes de confirmar la importación.</div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {previewItems.slice(0, 300).map((row: any, i: number) => (
+                      <div key={i} className="p-2 bg-gray-50 rounded-md flex justify-between text-sm">
+                        <div className="truncate pr-2">
+                          <strong>{row.Nombre || row.name}</strong>
+                          <div className="text-muted-foreground text-xs">{row.Descripción || row.description}</div>
+                        </div>
+                        <div className="text-right text-xs">
+                          <div>Precio: {row.Precio ?? row.price}</div>
+                          <div>Stock: {row.Stock ?? row.stock ?? 0}</div>
+                          <div>Colores: {row.colors ?? row.colors ?? ""}</div>
+                          <div>Caracteristicas: {row.features ?? row.Caracteristicas ?? ""}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -113,6 +170,8 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
               <li>• URL de Imagen (requerido)</li>
               <li>• Precio Oferta (opcional)</li>
               <li>• Stock (opcional, por defecto 0)</li>
+              <li>• Colores (opcional, por defecto ninguno)</li>
+              <li>• Caracteristicas (opcional, por defecto ninguno)</li>
             </ul>
             <Button variant="outline" size="sm" onClick={downloadTemplate} className="mt-3 w-full">
               <Download className="h-3 w-3 mr-2" />
@@ -124,16 +183,28 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
             <Button variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button onClick={handleImport} disabled={!file || loading}>
-              {loading ? (
-                <>Importando...</>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar
-                </>
-              )}
-            </Button>
+
+            {step === "preview" ? (
+              <>
+                <Button variant="outline" onClick={() => { setStep("select"); setPreviewItems(null); }}>
+                  Volver
+                </Button>
+                <Button onClick={handleConfirmImport} disabled={loading || !previewItems || previewItems.length === 0}>
+                  {loading ? "Guardando..." : "Confirmar e Importar"}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={handleUploadPreview} disabled={!file || loading}>
+                {loading ? (
+                  <>Procesando...</>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Previsualizar
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

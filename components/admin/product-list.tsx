@@ -53,7 +53,7 @@ export function ProductList({ products, loading, onEdit, onDelete }: ProductList
           <Card key={product.id} className="overflow-hidden">
             <div className="relative">
               <Image
-                src={product.image || "/placeholder.svg"}
+                src={Array.isArray(product.image) ? product.image[0] : product.image || "/placeholder.svg"}
                 alt={product.name}
                 width={300}
                 height={200}

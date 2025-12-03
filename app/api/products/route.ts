@@ -11,8 +11,10 @@ export async function GET(req: Request) {
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 12)))
     const q = (searchParams.get("q") ?? "").trim()
     const category = (searchParams.get("category") ?? "").trim()
+    const id = (searchParams.get("id") ?? "").trim()
     const priceFilter = (searchParams.get("priceFilter") ?? "").trim()
     const maxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined
+    const stockFilter = (searchParams.get("filter") ?? "").trim()
 
     await connectDB()
 
@@ -24,6 +26,8 @@ export async function GET(req: Request) {
 
     if (category) filter.category = category
 
+    if (id) filter._id = { $ne: id }
+
     if (maxPrice) {
       filter.$or = [
         { salePrice: { $gt: 0, $lte: maxPrice } },
@@ -31,6 +35,18 @@ export async function GET(req: Request) {
           $and: [{ $or: [{ salePrice: 0 }, { salePrice: { $exists: false } }] }, { price: { $lte: maxPrice } }],
         },
       ]
+    }
+
+    // Stock/discount filters
+    if (stockFilter === "inStock") {
+      filter.stock = { $gt: 0 }
+    } else if (stockFilter === "outOfStock") {
+      filter.stock = 0
+    } else if (stockFilter === "discounted") {
+      filter.salePrice = { $ne: 0 }
+      filter.$expr = { $lt: ["$salePrice", "$price"] }
+    } else if (stockFilter === "lowStock") {
+      filter.stock = { $gte: 1, $lt: 3 }
     }
 
     const total = await Product.countDocuments(filter)
@@ -49,8 +65,14 @@ export async function GET(req: Request) {
       .limit(limit)
       .lean()
 
-      //cuando cambie a array en mongo sacar el image este
-    const items = rawItems.map((p) => ({ ...p, id: (p as any)._id.toString() }))
+    // normalize image (now stored as array) and include colors if present
+    const items = rawItems.map((p) => ({
+      ...p,
+      id: (p as any)._id.toString(),
+      image: Array.isArray((p as any).image) ? (p as any).image : (p as any).image ? [(p as any).image] : [],
+      colors: Array.isArray((p as any).colors) ? (p as any).colors : (p as any).colors ? [(p as any).colors] : [],
+      features: Array.isArray((p as any).features) ? (p as any).features : (p as any).features ? [(p as any).features] : [],
+    }))
 
     const [inStock, outOfStock, discounted] = await Promise.all([
       Product.countDocuments({ stock: { $gt: 0 } }),
@@ -89,11 +111,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 })
     }
 
+    // validate images array: must be an array with at least one non-empty URL
+    const imgs = Array.isArray(product.image) ? product.image.map((s: any) => String(s || "").trim()).filter(Boolean) : []
+    if (imgs.length === 0) {
+      return NextResponse.json({ error: "Debe incluir al menos una URL de imagen" }, { status: 400 })
+    }
+
     await connectDB()
+
+    const imgsToSave = imgs
+    const colorsToSave = Array.isArray(product.colors) ? product.colors.map((s: any) => String(s || "").trim()).filter(Boolean) : []
+    const featuresToSave = Array.isArray(product.features) ? product.features.map((s: any) => String(s || "").trim()).filter(Boolean) : []
 
     const newProduct = new Product({
       ...product,
-      image: product.image || "",
+      image: imgsToSave,
+      colors: colorsToSave,
+      features: featuresToSave,
       stock: product.stock || 0,
       salePrice: Number(product.salePrice) || 0,
       price: Number(product.price),
@@ -120,7 +154,28 @@ export async function PUT(request: Request) {
 
     await connectDB()
 
-    console.log("Updating product with ID:", id, "and data:", updateData);
+    // Normalize image/colors fields if provided in update
+    if (updateData.image) {
+      updateData.image = Array.isArray(updateData.image)
+        ? updateData.image.map((s: any) => String(s || "").trim()).filter(Boolean)
+        : updateData.image
+        ? [String(updateData.image).trim()]
+        : []
+    }
+    if (updateData.colors) {
+      updateData.colors = Array.isArray(updateData.colors)
+        ? updateData.colors.map((s: any) => String(s || "").trim()).filter(Boolean)
+        : updateData.colors
+        ? [String(updateData.colors).trim()]
+        : []
+    }
+    if (updateData.features) {
+      updateData.features = Array.isArray(updateData.features)
+        ? updateData.features.map((s: any) => String(s || "").trim()).filter(Boolean)
+        : updateData.features
+        ? [String(updateData.features).trim()]
+        : []
+    }
 
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
 

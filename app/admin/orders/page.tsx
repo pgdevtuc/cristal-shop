@@ -17,7 +17,9 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<IOrder[]>([])
   const [filteredOrders, setFilteredOrders] = useState<IOrder[]>([])
   const [phoneFilter, setPhoneFilter] = useState("")
+  const [debouncedPhoneFilter, setDebouncedPhoneFilter] = useState("")
   const [statusFilter, setStatusFilter] = useState("Todos")
+  const [shippingFilter, setShippingFilter] = useState("Todos")
   const [statusRefresh, SetStatusRefresh] = useState("")
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
@@ -26,13 +28,21 @@ export default function OrdersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedPhoneFilter(phoneFilter)
+    }, 1500)
+    return () => clearTimeout(handler)
+  }, [phoneFilter])
+
   const fetchOrders = async () => {
     setIsLoading(true)
     try {
       const params = new URLSearchParams()
 
-      if (phoneFilter) params.append("phone", phoneFilter)
+      if (debouncedPhoneFilter) params.append("phone", debouncedPhoneFilter)
       if (statusFilter !== "Todos") params.append("status", statusFilter)
+      if (shippingFilter !== "Todos") params.append("shipping", shippingFilter)
 
       // Enviar rango de fechas si existe (formato yyyy-MM-dd para evitar TZ issues)
       if (dateRange?.from)
@@ -60,8 +70,9 @@ export default function OrdersPage() {
     fetchOrders()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    phoneFilter,
+    debouncedPhoneFilter,
     statusFilter,
+    shippingFilter,
     dateRange?.from?.toISOString(),
     dateRange?.to?.toISOString(),
   ])
@@ -88,7 +99,9 @@ export default function OrdersPage() {
 
   const handleClearFilters = () => {
     setPhoneFilter("")
+    setDebouncedPhoneFilter("")
     setStatusFilter("Todos")
+    setShippingFilter("Todos")
     const today = new Date()
     setDateRange({ from: today, to: today })
   }
@@ -98,7 +111,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 container mx-auto p-4 md:p-6">
+    <div className="min-h-screen bg-gray-100">
       <AdminHeader />
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8">
@@ -123,6 +136,8 @@ export default function OrdersPage() {
           setPhoneFilter={setPhoneFilter}
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
+          shippingFilter={shippingFilter}
+          setShippingFilter={setShippingFilter}
           dateRange={dateRange}
           setDateRange={setDateRange}
           onClearFilters={handleClearFilters}
@@ -145,7 +160,12 @@ export default function OrdersPage() {
           ) : (
             !isLoading &&
             filteredOrders.map((order) => (
-              <OrderCard key={order._id} order={order} onStatusChange={handleStatusChange} />
+              <OrderCard
+                key={order._id}
+                order={order}
+                onStatusChange={handleStatusChange}
+                onUpdated={fetchOrders}
+              />
             ))
           )}
         </div>

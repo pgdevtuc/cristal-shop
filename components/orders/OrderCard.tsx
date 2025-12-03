@@ -10,14 +10,17 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { IOrder } from "@/types/order"
 import Image from "next/image"
+import EditOrderModal from "@/components/orders/EditOrderModal"
 
 interface OrderCardProps {
   order: IOrder
   onStatusChange: (orderId: string, newStatus: IOrder["status"]) => void
+  onUpdated?: () => void
 }
 
-export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
+export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
 
   const getStatusColor = (status: IOrder["status"]) => {
     switch (status) {
@@ -73,6 +76,8 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
               </Button>
               <span className="font-medium text-sm md:text-base">Orden #{order.orderNumber}</span>
               <Badge className={getStatusColor(order.status)}>{getStatusLabel(order.status)}</Badge>
+              <Badge className={`${order.shipping?"bg-green-400 hover:bg-green-500 text-gray-600":"bg-gray-300 hover:bg-gray-100 text-gray-600"}`}>{order.shipping?"Con Envio":"Sin Envio"}</Badge>
+
             </div>
           </div>
 
@@ -99,9 +104,19 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
               <div>
                 <h4 className="font-medium mb-2">Detalles de la orden</h4>
               </div>
-              <div className="flex justify-center md:justify-end mb-4">
-                <Select 
-                  value={order.status} 
+              <div className="flex justify-center md:justify-end mb-4 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsEditOpen(true)
+                  }}
+                  className="w-full md:w-auto"
+                >
+                  Editar
+                </Button>
+                <Select
+                  value={order.status}
                   onValueChange={(newStatus: IOrder["status"]) => onStatusChange(order._id, newStatus)}
                 >
                   <SelectTrigger className="w-full md:w-40">
@@ -167,6 +182,10 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
                   </div>
                 )}
                 <div>
+                  <span className="text-muted-foreground">Telefono: </span>
+                  <span>{order.customerPhone}</span>
+                </div>
+                <div>
                   <span className="text-muted-foreground">Fecha: </span>
                   <span>{format(new Date(order.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}</span>
                 </div>
@@ -220,6 +239,16 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
             </div>
           </div>
         )}
+      {/* Edit Modal */}
+      <EditOrderModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        order={order}
+        onOrderUpdated={() => {
+          setIsEditOpen(false)
+          onUpdated && onUpdated()
+        }}
+      />
       </CardContent>
     </Card>
   )

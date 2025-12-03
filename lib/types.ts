@@ -5,8 +5,9 @@ export interface Product {
   price: number
   salePrice?: number | null
   category: string
-  image: string
+  image: string[]
   stock: number
+  colors?: string[]
 }
 
 export interface CartItem {

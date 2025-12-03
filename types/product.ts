@@ -1,4 +1,3 @@
-
 export interface IProduct {
     _id: string
     name: string
@@ -6,8 +5,10 @@ export interface IProduct {
     price: number
     salePrice?: number | null
     category: string
-    image: string
+    image: string[]
     stock: number
+    colors?: string[]
+    features?: string[]
 }
 
 export interface Product {
@@ -17,6 +18,8 @@ export interface Product {
   price: number
   salePrice?: number | null
   category: string
-  image: string
+  image: string[]
   stock: number
+  colors?: string[]
+  features?: string[]
 }

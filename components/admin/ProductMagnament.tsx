@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Plus, Upload, Download } from "lucide-react";
 import { ProductForm } from "./product-form";
 import { ProductsContainer } from "@/components/admin/ProductContainer";
-//import { ImportDialog } from "./import-dialog";
+import { ImportDialog } from "./import-dialog";
 import type {  Product } from "@/types/product";
 import { toast } from "sonner"
 
 export function ProductManagement() {
   const [showForm, setShowForm] = useState(false);
-  //const [showImport, setShowImport] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
@@ -32,22 +32,9 @@ export function ProductManagement() {
     }else{
       toast.success("Producto eliminado", {position:"top-center",style:{color:"green"},duration:3000});
     }
-    // el contenedor hará refresh al volver la promesa
   };
 
-/*   const downloadTemplate = () => {
-    const csvContent =
-      "Nombre,Descripción,Precio,Categoría,URL de Imagen,Precio Oferta,Stock\n" +
-      "Producto Ejemplo,Descripción del producto,99.99,Categoría,https://ejemplo.com/imagen.jpg,79.99,10";
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "plantilla_productos.csv";
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
- */
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -57,15 +44,10 @@ export function ProductManagement() {
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* <Button variant="outline" onClick={downloadTemplate}>
-            <Download className="h-4 w-4 mr-2" />
-            Descargar Plantilla
-          </Button>
-          <Button variant="outline" onClick={() =>/*setShowImport(true)>
+          <Button variant="outline" onClick={() => setShowImport(true)}>
             <Upload className="h-4 w-4 mr-2" />
             Importar
-          </Button> 
-          */}
+          </Button>
           <Button onClick={() => { setEditingProduct(null); setShowForm(true); }}>
             <Plus className="h-4 w-4 mr-2" />
             Agregar Producto
@@ -89,13 +71,12 @@ export function ProductManagement() {
         />
       )}
 
-      {/* Importar CSV 
       {showImport && (
         <ImportDialog
           onClose={() => setShowImport(false)}
           onImportComplete={() => { setShowImport(false); bumpRefresh(); }}
         />
-      )}*/}
+      )}
     </div>
   );
 }
