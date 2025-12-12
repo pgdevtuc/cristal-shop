@@ -2,105 +2,99 @@ import { NextResponse } from "next/server";
 import Order from "@/lib/models/order";
 import Product from "@/lib/models/product";
 import connectDB from "@/lib/database";
+import { verifySignature } from "@/lib/modo-signature";
 
-// Función helper para obtener fecha en hora de Argentina (UTC-3)
+// Obtener el body RAW (obligatorio para firmas JWS)
+export const runtime = "nodejs"; // Importante para Next.js
+
 function getArgentinaDate() {
-  const now = new Date();
-  // Argentina está a UTC-3, restamos 3 horas del UTC
-  const argentinaOffset = -3 * 60; // -3 horas en minutos
-  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const argentinaTime = new Date(utcTime + (argentinaOffset * 60000));
-  return argentinaTime;
+  const date = new Date();
+  const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+  return new Date(utc - 3 * 60 * 60 * 1000);
 }
+
 export async function POST(req: Request) {
   try {
     await connectDB();
 
-    const webhookData = await req.json();
-    console.log('Webhook recibido:', JSON.stringify(webhookData, null, 2));
+    const rawBody = await req.text(); // ← RAW BODY
+    const body = JSON.parse(rawBody);
 
-    const { data } = webhookData;
+    // ❗ Firma primero, antes de modificar body
+    const isValid = await verifySignature(body);
 
-    if (!data || data.type !== "Payment") {
-      console.log('Tipo de webhook no soportado:', data?.type);
-      return NextResponse.json({ 
-        received: true, 
-        message: 'Webhook type not supported' 
-      });
+    if (!isValid) {
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 400 }
+      );
     }
 
-    const { order, payment } = data;
+    const { external_intention_id, status } = body;
 
-    if (!order || !order.uuid) {
-      console.error('Datos de orden inválidos en webhook');
-      return NextResponse.json({ 
-        error: 'Invalid order data' 
-      }, { status: 400 });
+    if (!external_intention_id) {
+      return NextResponse.json(
+        { error: "Missing external_intention_id" },
+        { status: 400 }
+      );
     }
 
-    // Buscar la orden por el UUID de Viumi
-    const existingOrder = await Order.findOne({ viumiOrderId: order.uuid });
+    const order = await Order.findById(external_intention_id);
 
-    if (!existingOrder) {
-      console.error('Orden no encontrada:', order.uuid);
-      return NextResponse.json({ 
-        error: 'Order not found' 
-      }, { status: 404 });
+    if (!order) {
+      return NextResponse.json(
+        { error: "Order not found" },
+        { status: 404 }
+      );
     }
 
-    console.log('Orden encontrada:', existingOrder._id);
+    // Evitar doble procesamiento
+    if (order.status === "SUCCESS") {
+      return NextResponse.json({ received: true });
+    }
 
-    // Actualizar el estado de la orden según el webhook
-    let newStatus: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED" = "PROCESSING";
+    let newStatus: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED" =
+      "PROCESSING";
 
-    if (order.status === "SUCCESS" && payment?.status === "APPROVED") {
+    if (status === "ACCEPTED") {
       newStatus = "SUCCESS";
-      
-      // Reducir el stock de los productos
-      console.log('Reduciendo stock de productos...');
-      for (const item of existingOrder.items) {
-        await Product.findByIdAndUpdate(
-          item.productId,
-          { $inc: { stock: -item.quantity } }
-        );
+
+      // Reducir stock solo una vez
+      if (!order.stockUpdated) {
+        for (const item of order.items) {
+          await Product.findByIdAndUpdate(item.productId, {
+            $inc: { stock: -item.quantity },
+          });
+        }
+
+        await Order.findByIdAndUpdate(order._id, { stockUpdated: true });
       }
-      console.log('Stock actualizado');
-    } else if (order.status === "FAILED" || payment?.status === "REJECTED") {
+    } else if (status === "REJECTED") {
       newStatus = "FAILED";
-    } else if (order.status === "CANCELLED") {
-      newStatus = "CANCELLED";
     }
 
-    // Actualizar la orden con los datos del pago y fecha de Argentina
-    await Order.findByIdAndUpdate(existingOrder._id, {
+    await Order.findByIdAndUpdate(order._id, {
       status: newStatus,
-      paymentId: payment?.id,
-      authorizationCode: payment?.authorizationCode,
-      refNumber: payment?.refNumber,
-      paymentStatus: payment?.status,
-      updatedAt: getArgentinaDate()
+      paymentStatus: status,
+      updatedAt: getArgentinaDate(),
     });
 
-    console.log(`Orden ${existingOrder._id} actualizada a estado: ${newStatus}`);
-
-    return NextResponse.json({ 
-      received: true,
-      orderId: existingOrder._id,
-      status: newStatus
-    });
-
+    return NextResponse.json({ received: true, status: newStatus });
   } catch (error) {
-    console.error('Error procesando webhook:', error);
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error("Error processing webhook:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown",
+      },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET() {
-  return NextResponse.json({ 
-    status: 'ok',
-    message: 'Webhook endpoint is active' 
+  return NextResponse.json({
+    status: "ok",
+    message: "Webhook endpoint OK",
   });
 }

@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Suspense } from "react"
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -21,9 +20,6 @@ import {
     ShoppingBag,
     ArrowLeft,
     CreditCard,
-    Truck,
-    Shield,
-    RotateCcw,
     ChevronRight,
     Package,
     CheckCircle2,
@@ -43,12 +39,9 @@ export default function CartPage() {
 
     const totalItems = items.length || 0
     const subtotal = getTotalPrice()
-    const shipping = subtotal > 100000 ? 0 : 8000
-    const total = subtotal + shipping
+    const total = subtotal
 
-    const handleCheckout = async (e: React.FormEvent) => {
-        e.preventDefault()
-
+    const handleCheckout = async () => {
         if (!formData.name.trim()) {
             toast.error("Por favor ingresa tu nombre")
             return
@@ -84,18 +77,22 @@ export default function CartPage() {
                 throw new Error(result.error || "Error en el checkout")
             }
 
-            const checkoutUrl = result.checkout?.data?.attributes?.links?.checkout
-
-            if (checkoutUrl) {
+            // Guardar datos en localStorage para la página de pago
+            if (result.checkout && result.orderId) {
+                localStorage.setItem('pendingPayment', JSON.stringify({
+                    qrString: result.checkout.qr || '',
+                    deeplink: result.checkout.deeplink || '',
+                    amount: total,
+                    orderNumber: result.checkout.orderNumber || 'N/A',
+                    orderId: result.orderId,
+                    timestamp: Date.now()
+                }))
+                
+                // Redirigir a la página de pago
+                router.push(`/payment/${result.orderId}`)
                 toast.success("Redirigiendo al pago...")
-                clearCart()
-                setTimeout(() => {
-                    window.location.href = checkoutUrl
-                }, 1000)
             } else {
-                toast.success("Pedido realizado con exito")
-                clearCart()
-                router.push("/")
+                toast.error("Error: No se recibió información de pago")
             }
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Error al procesar el pedido")
@@ -107,10 +104,11 @@ export default function CartPage() {
     if (totalItems === 0) {
         return (
             <div className="min-h-screen bg-gray-50">
-                <Suspense fallback=
-                    {<div className="flex items-center justify-center p-4">
-                        <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-primary rounded-full" />
-                    </div>}>
+                <Suspense fallback={
+                    <div className="flex items-center justify-center p-4">
+                        <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-primary rounded-full"></div>
+                    </div>
+                }>
                     <ShopHeader />
                 </Suspense>
                 <div className="max-w-4xl mx-auto px-4 py-16">
@@ -120,8 +118,7 @@ export default function CartPage() {
                         </div>
                         <h1 className="text-2xl font-bold text-gray-900 mb-2">Tu carrito está vacío</h1>
                         <p className="text-gray-500 mb-8 max-w-md mx-auto">
-                            Parece que aún no has agregado productos a tu carrito. Explora nuestra tienda y encuentra lo que
-                            necesitas.
+                            Parece que aún no has agregado productos a tu carrito. Explora nuestra tienda y encuentra lo que necesitas.
                         </p>
                         <Link href="/">
                             <Button size="lg" className="bg-red-600 hover:bg-red-700">
@@ -139,7 +136,6 @@ export default function CartPage() {
         <div className="min-h-screen bg-gray-50">
             <ShopHeader />
 
-            {/* Breadcrumb */}
             <div className="max-w-7xl mx-auto px-4 py-4">
                 <nav className="flex items-center gap-2 text-sm text-gray-500">
                     <Link href="/" className="hover:text-red-600 transition-colors">
@@ -157,9 +153,7 @@ export default function CartPage() {
                 </h1>
 
                 <div className="grid lg:grid-cols-3 gap-8">
-                    {/* Cart Items */}
                     <div className="lg:col-span-2 space-y-4">
-                        {/* Items List */}
                         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                             <div className="p-4 border-b bg-gray-50">
                                 <div className="flex items-center justify-between">
@@ -179,7 +173,6 @@ export default function CartPage() {
                                 {items.map((item) => (
                                     <div key={`${item.id}-${item.color || ""}`} className="p-4 md:p-6">
                                         <div className="flex gap-4">
-                                            {/* Product Image */}
                                             <div className="relative w-24 h-24 md:w-32 md:h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                                                 <Image
                                                     src={item.image || "/placeholder.svg"}
@@ -189,7 +182,6 @@ export default function CartPage() {
                                                 />
                                             </div>
 
-                                            {/* Product Details */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
                                                     <div>
@@ -205,7 +197,6 @@ export default function CartPage() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Price */}
                                                     <div className="text-right">
                                                         <p className="text-lg font-bold text-gray-900">
                                                             ${formatPrice(item.price * item.quantity)}
@@ -214,7 +205,6 @@ export default function CartPage() {
                                                     </div>
                                                 </div>
 
-                                                {/* Quantity Controls & Remove */}
                                                 <div className="flex items-center justify-between mt-4">
                                                     <div className="flex items-center border rounded-lg">
                                                         <Button
@@ -253,7 +243,6 @@ export default function CartPage() {
                             </div>
                         </div>
 
-                        {/* Continue Shopping */}
                         <Link href="/">
                             <Button variant="outline" className="w-full md:w-auto bg-transparent">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -262,9 +251,7 @@ export default function CartPage() {
                         </Link>
                     </div>
 
-                    {/* Order Summary & Checkout */}
                     <div className="space-y-4">
-                        {/* Order Summary */}
                         <div className="bg-white rounded-xl shadow-sm p-6 mt-16">
                             <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                                 <Package className="h-5 w-5 mr-2" />
@@ -276,19 +263,6 @@ export default function CartPage() {
                                     <span className="text-gray-600">Subtotal ({totalItems} productos)</span>
                                     <span className="font-medium">${formatPrice(subtotal)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Envío</span>
-                                    {shipping === 0 ? (
-                                        <span className="font-medium text-green-600">Gratis</span>
-                                    ) : (
-                                        <span className="font-medium">${formatPrice(shipping)}</span>
-                                    )}
-                                </div>
-                                {shipping > 0 && (
-                                    <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                                        Agrega ${formatPrice(100000 - subtotal)} más para envío gratis
-                                    </p>
-                                )}
                                 <Separator />
                                 <div className="flex justify-between text-lg font-bold">
                                     <span>Total</span>
@@ -297,8 +271,7 @@ export default function CartPage() {
                             </div>
                         </div>
 
-                        {/* Checkout Form */}
-                        <form onSubmit={handleCheckout} className="bg-white rounded-xl shadow-sm p-6">
+                        <div className="bg-white rounded-xl shadow-sm p-6">
                             <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                                 <CreditCard className="h-5 w-5 mr-2" />
                                 Datos de Contacto
@@ -314,7 +287,6 @@ export default function CartPage() {
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="Tu nombre completo"
-                                        required
                                         disabled={isProcessing}
                                         className="mt-1"
                                     />
@@ -366,7 +338,7 @@ export default function CartPage() {
                             </div>
 
                             <Button
-                                type="submit"
+                                onClick={handleCheckout}
                                 disabled={isProcessing}
                                 className="w-full mt-6 bg-red-600 hover:bg-red-700 h-12 text-base font-semibold"
                             >
@@ -400,9 +372,9 @@ export default function CartPage() {
 
                             <p className="text-xs text-gray-500 text-center mt-4 flex items-center justify-center">
                                 <Lock className="h-3 w-3 mr-1" />
-                                Pago 100% seguro y encriptado
+                                Pago 100% seguro y encriptado con Modo
                             </p>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
