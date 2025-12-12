@@ -88,12 +88,13 @@ export default function ProductClient({
     toast.success("Producto agregado al carrito", { position: "top-center", style: { color: "green" }, duration: 1500 })
   }
 
-  const currentPrice = product.salePrice || product.price
-  const hasDiscount = product?.salePrice && product.salePrice > 0 && product.salePrice < product.price
+  const sale = typeof product.salePrice === 'number' ? product.salePrice : Number(product.salePrice ?? 0)
+  const hasDiscount = sale > 0 && sale < product.price
+  const currentPrice = hasDiscount ? sale : product.price
   const discountPercentage = hasDiscount
-    ? Math.round(((product.price - (product.salePrice ?? 0)) / product.price) * 100)
+    ? Math.round(((product.price - sale) / product.price) * 100)
     : 0
-  const savings = hasDiscount ? product.price - (product.salePrice ?? 0) : 0
+  const savings = hasDiscount ? product.price - sale : 0
 
   return (
     <div className="min-h-screen bg-gray-50">

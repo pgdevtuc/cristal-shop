@@ -61,19 +61,23 @@ export function WhatsAppProductCatalog() {
   const pathname = usePathname()
   function updateQuery(updates: Record<string, string | undefined>) {
     const sp = new URLSearchParams(searchParams.toString())
-    
     Object.entries(updates).forEach(([k, v]) => {
-      if (v === undefined || v === "") sp.delete(k)
-      else sp.set(k, v)
+      if (v === undefined || v === "") {
+        sp.delete(k)
+        return
+      }
+
+      sp.set(k, v)
     })
     router.push(`${pathname}?${sp.toString()}`, { scroll: false })
   }
+
 
   const abortRef = useRef<AbortController | null>(null)
 
   // Cargar categorías al inicio
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       try {
         setCatLoading(true)
         const res = await fetch("/api/categories")
@@ -111,15 +115,18 @@ export function WhatsAppProductCatalog() {
     setMaxPrice(mp)
   }, [searchParams])
 
-  // Cuando cambian filtros/búsqueda
+  // Cuando cambian filtros/búsqueda (evitamos flicker y doble fetch)
+  const didRunFiltersEffect = useRef(false)
   useEffect(() => {
-    if (!initialLoading) {
-      setProducts([])
-      setPage(1)
-      fetchPage(1, true, debouncedSearch)
+    if (!didRunFiltersEffect.current) {
+      // saltar la primera ejecución, ya hicimos el fetch inicial en mount
+      didRunFiltersEffect.current = true
+      return
     }
+    setPage(1)
+    fetchPage(1, true, debouncedSearch)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, debouncedSearch, initialLoading, filterPrice])
+  }, [selectedCategory, debouncedSearch, filterPrice])
 
   async function fetchPage(nextPage: number, replace = false, qOverride?: string) {
     abortRef.current?.abort()
@@ -193,12 +200,9 @@ export function WhatsAppProductCatalog() {
             categories={catObjects}
             selectedCategory={selectedCategory}
             onCategoryChange={(c) => {
-              setSelectedCategory(c)
-              updateQuery({ category: c === "all" ? undefined : c })
-            }}
-            onSearchClear={() => {
-              setSearchTerm("")
-              updateQuery({ q: undefined })
+              const newCategory = selectedCategory === c ? "all" : c
+              setSelectedCategory(newCategory)
+              updateQuery({ category: newCategory === "all" ? undefined : newCategory })
             }}
             autoScrollInterval={2000}
           />
@@ -215,12 +219,6 @@ export function WhatsAppProductCatalog() {
         {initialLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {[...Array(limit)].map((_, i) => (
-              <WhatsAppProductCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : loading && !initialLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 opacity-60">
-            {[...Array(8)].map((_, i) => (
               <WhatsAppProductCardSkeleton key={i} />
             ))}
           </div>
@@ -245,11 +243,18 @@ export function WhatsAppProductCatalog() {
         ) : (
           <>
             <div
-              className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 ${loading ? "opacity-50" : ""}`}
+              className={`relative`}
             >
-              {products.map((p) => (
-                <WhatsAppProductCard key={p.id} product={p} />
-              ))}
+              <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 ${loading ? "opacity-50" : ""}`}>
+                {products.map((p) => (
+                  <WhatsAppProductCard key={p.id} product={p} />
+                ))}
+              </div>
+              {loading && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              )}
             </div>
 
             {/* Cargar más */}

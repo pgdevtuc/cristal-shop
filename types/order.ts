@@ -17,12 +17,17 @@ export interface IOrder {
   items: IOrderItem[]
   totalAmount: number
   status: "CREATED" | "PAYMENT_FAILED" | "PAID" | "PREPARING" | "READY" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED"
-  viumiOrderId?: string
-  viumiOrderNumber?: string
-  paymentId?: number
+  paymentId?: string
   authorizationCode?: string
   refNumber?: string
   paymentStatus?: string
+  card?: {
+    bank_name: string
+    issuer_name: string
+    bin: string
+    last_digits: string
+    card_type: string
+  }
   checkoutUrl?: string
   createdAt: Date
   updatedAt: Date

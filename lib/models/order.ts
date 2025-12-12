@@ -19,10 +19,17 @@ export interface IOrder extends Document {
   items: IOrderItem[]
   totalAmount: number
   status: "CREATED" | "PAYMENT_FAILED" | "PAID" | "PREPARING" | "READY" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED"
-  paymentId?: number
+  paymentId?: string
   authorizationCode?: string
   refNumber: string
   paymentStatus?: "SCANNED" | "PROCESSING" | "REJECTED" | "ACCEPTED"
+  card?: {
+    bank_name: string
+    issuer_name: string
+    bin: string
+    last_digits: string
+    card_type: string
+  }
   checkoutUrl?: string
   stockUpdated?:boolean
   createdAt: Date
@@ -95,7 +102,7 @@ const OrderSchema = new Schema<IOrder>(
       default: "CREATED",
     },
     paymentId: {
-      type: Number,
+      type: String,
     },
     authorizationCode: {
       type: String,
@@ -106,6 +113,13 @@ const OrderSchema = new Schema<IOrder>(
     },
     paymentStatus: {
       type: String,
+    },
+    card: {
+      bank_name: { type: String },
+      issuer_name: { type: String },
+      bin: { type: String },
+      last_digits: { type: String },
+      card_type: { type: String },
     },
     checkoutUrl: {
       type: String,

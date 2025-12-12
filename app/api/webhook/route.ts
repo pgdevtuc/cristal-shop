@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const isValid = await verifySignature(body);
     if (!isValid) return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
 
-    const { external_intention_id, status } = body;
+    const { external_intention_id, status, id: paymentId, card } = body;
 
     const cart = await Cart.findById(external_intention_id);
 
@@ -46,6 +46,7 @@ export async function POST(req: Request) {
         totalAmount: cart.totalAmount,
         status: "CREATED",
         paymentStatus: status,
+        paymentId: paymentId ? String(paymentId) : undefined,
         stockUpdated: false,
         createdAt: getArgentinaDate(),
         updatedAt: getArgentinaDate(),
@@ -62,6 +63,15 @@ export async function POST(req: Request) {
 
     if (status === "ACCEPTED") {
       newStatus = "PAID";
+      if (card) {
+        order.card = {
+          bank_name: card.bank_name,
+          issuer_name: card.issuer_name,
+          bin: card.bin,
+          last_digits: card.last_digits,
+          card_type: card.card_type,
+        } as any;
+      }
 
       if (!order.stockUpdated) {
         for (const item of cart.items) {

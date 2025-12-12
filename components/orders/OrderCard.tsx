@@ -240,21 +240,10 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
                   <span className="text-muted-foreground">Fecha: </span>
                   <span>{format(new Date(order.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}</span>
                 </div>
-                {order.viumiOrderNumber && (
-                  <div>
-                    <span className="text-muted-foreground">N° Orden Viumi: </span>
-                    <span className="font-mono text-xs">{order.viumiOrderNumber}</span>
-                  </div>
-                )}
-                {order.viumiOrderId && (
-                  <div>
-                    <span className="text-muted-foreground">ID Viumi: </span>
-                    <span className="font-mono text-xs">{order.viumiOrderId}</span>
-                  </div>
-                )}
+                
                 {order.paymentId && (
                   <div>
-                    <span className="text-muted-foreground">ID Pago: </span>
+                    <span className="text-muted-foreground">ID Pago MODO: </span>
                     <span>{order.paymentId}</span>
                   </div>
                 )}
@@ -276,6 +265,13 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
                     <span className={order.paymentStatus === "ACCEPTED" ? "text-green-600 font-medium" : order.paymentStatus === "REJECTED" ? "text-red-600 font-medium" : ""}>
                       {getPaymentStatusSpanish(order.paymentStatus)}
                     </span>
+                  </div>
+                )}
+                {order.card && (
+                  <div>
+                    <span className="text-muted-foreground">Tarjeta: </span>
+                    <span className="font-medium">{order.card.bank_name}</span>
+                    <span> · {order.card.issuer_name} · {order.card.card_type} · ****{order.card.last_digits}</span>
                   </div>
                 )}
               </div>
