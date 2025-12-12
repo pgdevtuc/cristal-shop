@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart } from "lucide-react"
 import { useCart } from "@/contexts/cart-context"
-import { CartDrawer } from "@/components/cart/cart-drawer"
 
 export function FloatingCartButton() {
   const [isVisible, setIsVisible] = useState(false)
@@ -44,7 +43,6 @@ export function FloatingCartButton() {
         Ir al Carrito ({totalItems})
       </Button>
 
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   )
 }
