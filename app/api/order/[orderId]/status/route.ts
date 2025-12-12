@@ -28,7 +28,7 @@ export async function GET(
       );
     }
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findOne({refNumber:orderId});
 
     if (!order) {
       return Response.json({ error: "Orden no encontrada" }, { status: 404 });

@@ -33,7 +33,6 @@ const OrderSchema = new Schema<IOrder>(
   {
     orderNumber: {
       type: String,
-      unique: true,
     },
     customerName: {
       type: String,
@@ -103,6 +102,7 @@ const OrderSchema = new Schema<IOrder>(
     },
     refNumber: {
       type: String,
+      unique:true
     },
     paymentStatus: {
       type: String,
