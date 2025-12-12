@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useReducer, type ReactNode } from "react"
+import { createContext, useContext, useReducer, useEffect, type ReactNode } from "react"
 
 interface CartItem {
   id: string
@@ -23,6 +23,8 @@ type CartAction =
   | { type: "CLEAR_CART" }
   | { type: "SET_CART"; payload: CartItem[] }
 
+const STORAGE_KEY = "cart:items";
+
 const CartContext = createContext<{
   items: CartItem[]
   addItem: (item: Omit<CartItem, "quantity">) => void
@@ -39,7 +41,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       const existingItem = state.items.find((item) => item.id === action.payload.id)
 
       if (existingItem && existingItem.stock && existingItem.quantity < existingItem.stock) {
-
         return {
           ...state,
           items: state.items.map((item) =>
@@ -111,6 +112,32 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [] })
+
+  // Hydrate from localStorage on mount (client only)
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as CartItem[]
+        if (Array.isArray(parsed)) {
+          dispatch({ type: "SET_CART", payload: parsed })
+        }
+      }
+    } catch (e) {
+      console.error("Error reading cart from localStorage", e)
+    }
+  }, [])
+
+  // Persist to localStorage whenever items change
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items))
+    } catch (e) {
+      console.error("Error saving cart to localStorage", e)
+    }
+  }, [state.items])
 
   const addItem = (item: Omit<CartItem, "quantity">) => {
     dispatch({ type: "ADD_ITEM", payload: item })

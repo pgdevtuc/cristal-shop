@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import Order from "@/lib/models/order";
+import Cart from "@/lib/models/carts";
 import Product from "@/lib/models/product";
 import connectDB from "@/lib/database";
 import { verifySignature } from "@/lib/modo-signature";
 
-// Obtener el body RAW (obligatorio para firmas JWS)
-export const runtime = "nodejs"; // Importante para Next.js
+export const runtime = "nodejs";
 
 function getArgentinaDate() {
   const date = new Date();
@@ -17,67 +17,69 @@ export async function POST(req: Request) {
   try {
     await connectDB();
 
-    const rawBody = await req.text(); // ← RAW BODY
+    const rawBody = await req.text();
     const body = JSON.parse(rawBody);
 
-    // ❗ Firma primero, antes de modificar body
     const isValid = await verifySignature(body);
-
-    if (!isValid) {
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 400 }
-      );
-    }
+    if (!isValid) return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
 
     const { external_intention_id, status } = body;
 
-    if (!external_intention_id) {
-      return NextResponse.json(
-        { error: "Missing external_intention_id" },
-        { status: 400 }
-      );
+    const cart = await Cart.findById(external_intention_id);
+
+    if (!cart) {
+      return NextResponse.json({ error: "Cart not found" }, { status: 404 });
     }
 
-    const order = await Order.findById(external_intention_id);
+    let order = await Order.findOne({ refNumber: external_intention_id });
 
     if (!order) {
-      return NextResponse.json(
-        { error: "Order not found" },
-        { status: 404 }
-      );
+      order = await Order.create({
+        refNumber: cart._id,
+        customerName: cart.customerName,
+        customerEmail: cart.customerEmail,
+        customerPhone: cart.customerPhone,
+        customerAddress: cart.customerAddress,
+        customerPostalCode: cart.customerPostalCode,
+        shipping: cart.shipping,
+        items: cart.items,
+        totalAmount: cart.totalAmount,
+        status: "PROCESSING",
+        paymentStatus: status,
+        stockUpdated: false,
+        createdAt: getArgentinaDate(),
+        updatedAt: getArgentinaDate(),
+      });
     }
 
-    // Evitar doble procesamiento
-    if (order.status === "SUCCESS") {
+    // Evitar doble procesamiento del mismo webhook
+    if (order.paymentStatus === "ACCEPTED") {
       return NextResponse.json({ received: true });
     }
 
-    let newStatus: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED" =
-      "PROCESSING";
+    // Manejo de estados
+    let newStatus = "PROCESSING";
 
     if (status === "ACCEPTED") {
       newStatus = "SUCCESS";
 
-      // Reducir stock solo una vez
       if (!order.stockUpdated) {
-        for (const item of order.items) {
+        for (const item of cart.items) {
           await Product.findByIdAndUpdate(item.productId, {
             $inc: { stock: -item.quantity },
           });
         }
 
-        await Order.findByIdAndUpdate(order._id, { stockUpdated: true });
+        order.stockUpdated = true;
       }
-    } else if (status === "REJECTED") {
-      newStatus = "FAILED";
     }
+    if (status === "REJECTED") newStatus = "FAILED";
 
-    await Order.findByIdAndUpdate(order._id, {
-      status: newStatus,
-      paymentStatus: status,
-      updatedAt: getArgentinaDate(),
-    });
+    // Actualizar order final
+    order.status = newStatus;
+    order.paymentStatus = status;
+    order.updatedAt = getArgentinaDate();
+    await order.save();
 
     return NextResponse.json({ received: true, status: newStatus });
   } catch (error) {

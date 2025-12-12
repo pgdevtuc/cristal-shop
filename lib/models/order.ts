@@ -9,21 +9,22 @@ export interface IOrderItem {
 }
 
 export interface IOrder extends Document {
-  orderNumber: string
+  orderNumber?: string
   customerName: string
+  customerEmail: string
   customerAddress?: string
+  customerPostalCode?: string
   customerPhone: string
   shipping: boolean
   items: IOrderItem[]
   totalAmount: number
   status: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED"
-  viumiOrderId?: string
-  viumiOrderNumber?: string
   paymentId?: number
   authorizationCode?: string
-  refNumber?: string
-  paymentStatus?: string
+  refNumber: string
+  paymentStatus?: "SCANNED" | "PROCESSING" | "REJECTED" | "ACCEPTED"
   checkoutUrl?: string
+  stockUpdated?:boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -32,7 +33,6 @@ const OrderSchema = new Schema<IOrder>(
   {
     orderNumber: {
       type: String,
-      required: true,
       unique: true,
     },
     customerName: {
@@ -40,7 +40,16 @@ const OrderSchema = new Schema<IOrder>(
       required: true,
       trim: true,
     },
+    customerEmail: {
+      type: String,
+      required: true,
+      trim: true
+    },
     customerAddress: {
+      type: String,
+      trim: true,
+    },
+    customerPostalCode: {
       type: String,
       trim: true,
     },
@@ -86,13 +95,6 @@ const OrderSchema = new Schema<IOrder>(
       enum: ["PENDING", "PROCESSING", "SUCCESS", "FAILED", "CANCELLED"],
       default: "PENDING",
     },
-    viumiOrderId: {
-      type: String,
-      index: true,
-    },
-    viumiOrderNumber: {
-      type: String,
-    },
     paymentId: {
       type: Number,
     },
@@ -107,6 +109,9 @@ const OrderSchema = new Schema<IOrder>(
     },
     checkoutUrl: {
       type: String,
+    },
+    stockUpdated:{
+      type:Boolean,
     },
     createdAt: {
       type: Date,

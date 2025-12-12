@@ -1,5 +1,5 @@
 import Product from "@/lib/models/product";
-import Order from "@/lib/models/order";
+import Carts from "@/lib/models/carts";
 import Token from "@/lib/models/token";
 import { decode } from "jsonwebtoken";
 import connectDB from "@/lib/database";
@@ -88,17 +88,27 @@ export async function POST(req: Request) {
        2. Obtener datos del request
     -------------------------------- */
     const body = await req.json();
-    const { products, customerName, customerAddress, customerPhone, customerEmail } = body;
+    const { products, customerName, customerAddress, customerPostalCode, customerPhone, customerEmail, shipping } = body;
 
     if (!Array.isArray(products) || products.length === 0) {
       return Response.json({ error: "No se enviaron productos." }, { status: 400 });
     }
 
+    if (shipping) {
+      if (!customerAddress || !String(customerAddress).trim()) {
+        return Response.json({ error: "La dirección es requerida cuando hay envío" }, { status: 400 });
+      }
+      if (!customerPostalCode || !String(customerPostalCode).trim()) {
+        return Response.json({ error: "El código postal es requerido cuando hay envío" }, { status: 400 });
+      }
+    }
+    if (!customerEmail || !customerName || !customerPhone) return Response.json({ error: "Completa los campos" }, { status: 400 });
+
     /* ------------------------------
        3. Validar stock y calcular monto
     -------------------------------- */
     let totalAmount = 0;
-    const orderItems = [];
+    const cartItems = [];
     const stockProblems = [];
 
     for (const item of products) {
@@ -125,14 +135,14 @@ export async function POST(req: Request) {
       const price = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
       totalAmount += price * qty;
 
-      orderItems.push({
-        description:product.descripcion,
+      cartItems.push({
+        description: product.descripcion,
         quantity: qty,
-        unit_price:price,
+        unit_price: price,
         image: product.image[0],
         sku: product._id,
         name: product.name,
-        category_name:product.category
+        category_name: product.category
       });
     }
 
@@ -143,41 +153,32 @@ export async function POST(req: Request) {
       );
     }
 
-    /* ------------------------------
-       4. Crear Orden interna
-    -------------------------------- */
-    const nowAR = getArgentinaDateISO();
-    const count = await Order.countDocuments();
-    const orderNumber = `ORD-${Date.now()}-${String(count + 1).padStart(5, "0")}`;
 
-    const order = await Order.create({
-      orderNumber,
+    const cart = await Carts.create({
       customerName,
-      customerAddress,
+      customerEmail,
       customerPhone,
-      shipping:false,
-      items: orderItems.map(o=>({name:o.name,productId:o.sku,price:o.unit_price,quantity:o.quantity,image:o.image})),
+      items: cartItems.map(o => ({ name: o.name, productId: o.sku, price: o.unit_price, quantity: o.quantity, image: o.image })),
+      shipping: Boolean(shipping),
+      customerAddress,
+      customerPostalCode,
       totalAmount,
-      status: "PENDING",
-      createdAt: nowAR,
-      updatedAt: nowAR
+      expiresAt: new Date(Date.now() + 20 * 60 * 1000)
     });
 
     /* ------------------------------
        5. Crear Payment Request en MODO
     -------------------------------- */
     const payload = {
-      description: `Orden ${orderNumber}`,
+      description: `Pedido a Cristal Shop`,
       amount: totalAmount,
       currency: "ARS",
       cc_code: "13CSI",
       processor_code: process.env.MODO_CLIENT_PROCESOR_CODE ?? "",
-      external_intention_id: order._id.toString(),
-      
-      items: orderItems
+      external_intention_id: cart._id.toString(),
+      items: cartItems
     };
 
-    console.log("Payload", payload)
 
     const modoRes = await fetch(
       "https://merchants.playdigital.com.ar/v2/payment-requests/",
@@ -195,41 +196,23 @@ export async function POST(req: Request) {
     const modoText = await modoRes.text();
 
     if (!modoRes.ok) {
-      await Order.findByIdAndUpdate(order._id, {
-        status: "FAILED",
-        updatedAt: getArgentinaDateISO()
-      });
-
       throw new Error(`Error en MODO: ${modoText}`);
     }
 
     const modoData = JSON.parse(modoText);
 
-    /* ------------------------------
-       6. Guardar datos de MODO en la orden
-    -------------------------------- */
-    await Order.findByIdAndUpdate(order._id, {
-      modoIntentionId: modoData.id,
-      modoQrString: modoData.qr,
-      modoDeeplink: modoData.deeplink,
-      checkoutUrl: modoData.deeplink,
-      status: "PROCESSING",
-      updatedAt: getArgentinaDateISO()
-    });
-    console.log("Response MODO",modoData)
 
     /* ------------------------------
        7. Enviar respuesta al frontend
     -------------------------------- */
     return Response.json({
       success: true,
-      orderId: order._id,
+      orderId: cart._id,
       checkout: {
         intentionId: modoData.id,
         qr: modoData.qr,
         deeplink: modoData.deeplink,
         amount: totalAmount,
-        orderNumber
       }
     });
 

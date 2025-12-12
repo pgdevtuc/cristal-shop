@@ -1,45 +1,91 @@
 import mongoose, { type Document, Schema } from "mongoose"
 
 export interface ICarts extends Document {
-    _id: string
-    products: ICartsProduct[]
-    phone: string
+    customerName: string
+    customerEmail: string
+    customerPhone: string
+    items: ICardItem[]
+    shipping: boolean
+    customerAddress?: string
+    customerPostalCode?: string
+    totalAmount: number
+    expiresAt: Date
+    createdAt: Date
+}
+
+export interface ICardItem {
+    productId: string
     name: string
-}
-
-export interface ICartsProduct {
-    id: string
-    title: string
-    unit_price: number
+    price: number
     quantity: number
+    image?: string
 }
-
-const ProductSchema = new Schema<ICartsProduct>({
-    id: { type: String, required: true },
-    title: { type: String, required: true },
-    unit_price: { type: Number, required: true, min: 1 },
-    quantity: { type: Number, required: true, min: 1 },
-})
 
 
 const cartsSchema = new Schema<ICarts>({
-    products: {
-        type: [ProductSchema],
+    customerName: {
+        type: String,
         required: true,
-        validate: {
-            validator: (products: ICartsProduct[]) => products && products.length > 0,
-            message: "Una orden debe tener al menos un producto",
+        trim: true
+    },
+    customerEmail: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    customerPhone: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    items: [
+        {
+            productId: {
+                type: String,
+                required: true,
+            },
+            name: {
+                type: String,
+                required: true,
+            },
+            price: {
+                type: Number,
+                required: true,
+            },
+            quantity: {
+                type: Number,
+                required: true,
+            },
+            image: {
+                type: String,
+            },
         },
-
+    ],
+    totalAmount: {
+        type: Number,
+        required: true,
     },
-    phone: {
-        type: String,
-        required: true
+    shipping: {
+        type: Boolean,
+        required: true,
+        default: false
     },
-    name: {
+    customerAddress: {
         type: String,
-        required: true
+        trim: true
+    },
+    customerPostalCode: {
+        type: String,
+        trim: true
+    },
+    expiresAt:{
+        type:Date,
+        required:true
     }
-})
+},
+    {
+        timestamps: true
+    }
+)
 
 export default mongoose.models.carts || mongoose.model<ICarts>("carts", cartsSchema)

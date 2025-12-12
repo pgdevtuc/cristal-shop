@@ -31,7 +31,7 @@ export default function OrdersPage() {
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedPhoneFilter(phoneFilter)
-    }, 1500)
+    }, 1200)
     return () => clearTimeout(handler)
   }, [phoneFilter])
 
@@ -121,7 +121,7 @@ export default function OrdersPage() {
           </div>
           <Button
             onClick={() => setIsCreateModalOpen(true)}
-            className="bg-green-600 hover:bg-green-700  w-full sm:w-auto"
+            className=""
           >
             <Plus className="h-4 w-4 mr-2" />
             Nueva Orden

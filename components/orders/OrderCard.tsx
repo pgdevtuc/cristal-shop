@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { ca, es } from "date-fns/locale"
 import { IOrder } from "@/types/order"
 import Image from "next/image"
 import EditOrderModal from "@/components/orders/EditOrderModal"
@@ -36,6 +36,21 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
         return "bg-gray-500 text-white hover:bg-gray-700"
       default:
         return "bg-gray-500 text-white"
+    }
+  }
+
+  const getPaymentStatusSpanish = (status: string) => {
+    switch (status) {
+      case "SCANNED":
+        return "QR Escaneado"
+      case "REJECTED":
+        return "Rechazado"
+      case "PROCESSING":
+        return "En Proceso"
+      case "ACCEPTED":
+        return "Pagago"
+      default:
+        return status
     }
   }
 
@@ -76,7 +91,8 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
               </Button>
               <span className="font-medium text-sm md:text-base">Orden #{order.orderNumber}</span>
               <Badge className={getStatusColor(order.status)}>{getStatusLabel(order.status)}</Badge>
-              <Badge className={`${order.shipping?"bg-green-400 hover:bg-green-500 text-gray-600":"bg-gray-300 hover:bg-gray-100 text-gray-600"}`}>{order.shipping?"Con Envio":"Sin Envio"}</Badge>
+              <Badge className={`${order.shipping ? "bg-green-400 hover:bg-green-500 text-gray-600" : "bg-gray-300 hover:bg-gray-100 text-gray-600"}`}>{order.shipping ? "Con Envio" : "Sin Envio"}</Badge>
+              <Badge className={`${order.paymentStatus === "ACCEPTED"? "bg-green-600 hover:bg-green-500 text-gray-600" : order.paymentStatus === "REJECTED"? "bg-red-600 hover:bg-red-400 text-white":order.paymentStatus === "PROCESSING" ? "bg-blue-500 hover:bg-blue-600 text-white":"bg-gray-500 hover:bg-gray-500 text-white"}`}>{getPaymentStatusSpanish(order.paymentStatus ?? "")}</Badge>
 
             </div>
           </div>
@@ -239,16 +255,16 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
             </div>
           </div>
         )}
-      {/* Edit Modal */}
-      <EditOrderModal
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        order={order}
-        onOrderUpdated={() => {
-          setIsEditOpen(false)
-          onUpdated && onUpdated()
-        }}
-      />
+        {/* Edit Modal */}
+        <EditOrderModal
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          order={order}
+          onOrderUpdated={() => {
+            setIsEditOpen(false)
+            onUpdated && onUpdated()
+          }}
+        />
       </CardContent>
     </Card>
   )

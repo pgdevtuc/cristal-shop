@@ -46,7 +46,7 @@ export function WhatsAppProductCard({ product }: WhatsAppProductCardProps) {
           )}
           {/* Agotado */}
           {product.stock === 0 && (
-            <Badge className="absolute top-3 right-3 bg-gray-800 text-white text-xs">Agotado</Badge>
+            <Badge className="absolute top-3 right-3 bg-red-700 text-white text-xs">Agotado</Badge>
           )}
         </div>
 

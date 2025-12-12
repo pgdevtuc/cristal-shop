@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useCart } from "@/contexts/cart-context"
 import { ShopHeader } from "@/components/layout/whatsapp-header"
 import { formatPrice } from "@/lib/formatPrice"
@@ -30,11 +31,13 @@ export default function CartPage() {
     const router = useRouter()
     const { items, updateQuantity, removeItem, getTotalPrice, clearCart } = useCart()
     const [isProcessing, setIsProcessing] = useState(false)
+    const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'shipping'>('pickup')
     const [formData, setFormData] = useState({
         name: "",
         email: "",
         phone: "",
         address: "",
+        postalCode: "",
     })
 
     const totalItems = items.length || 0
@@ -45,6 +48,17 @@ export default function CartPage() {
         if (!formData.name.trim()) {
             toast.error("Por favor ingresa tu nombre")
             return
+        }
+
+        if (deliveryMethod === 'shipping') {
+            if (!formData.address.trim()) {
+                toast.error("Por favor ingresa tu dirección para el envío")
+                return
+            }
+            if (!formData.postalCode.trim()) {
+                toast.error("Por favor ingresa tu código postal")
+                return
+            }
         }
 
         setIsProcessing(true)
@@ -68,6 +82,8 @@ export default function CartPage() {
                     customerEmail: formData.email,
                     customerPhone: formData.phone,
                     customerAddress: formData.address,
+                    shipping: deliveryMethod === 'shipping',
+                    customerPostalCode: formData.postalCode,
                 }),
             })
 
@@ -83,11 +99,10 @@ export default function CartPage() {
                     qrString: result.checkout.qr || '',
                     deeplink: result.checkout.deeplink || '',
                     amount: total,
-                    orderNumber: result.checkout.orderNumber || 'N/A',
                     orderId: result.orderId,
                     timestamp: Date.now()
                 }))
-                
+
                 // Redirigir a la página de pago
                 router.push(`/payment/${result.orderId}`)
                 toast.success("Redirigiendo al pago...")
@@ -210,8 +225,9 @@ export default function CartPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                            onClick={() => { if (item.quantity > 1) updateQuantity(item.id, item.quantity - 1) }}
                                                             className="h-9 w-9 rounded-r-none hover:bg-gray-100"
+                                                            disabled={item.quantity == 1}
                                                         >
                                                             <Minus className="h-4 w-4" />
                                                         </Button>
@@ -272,6 +288,52 @@ export default function CartPage() {
                         </div>
 
                         <div className="bg-white rounded-xl shadow-sm p-6">
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">Método de Entrega</h2>
+
+                            <RadioGroup value={deliveryMethod} onValueChange={(v) => setDeliveryMethod(v as 'pickup' | 'shipping')} className="space-y-3">
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="pickup" id="pickup" />
+                                    <Label htmlFor="pickup">Retiro en sucursal (gratis en Villafañe 75, Perico, Jujuy, Argentina)</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="shipping" id="shipping" />
+                                    <Label htmlFor="shipping">Envío a domicilio (a cotizar luego de la compra)</Label>
+                                </div>
+                            </RadioGroup>
+
+                            {deliveryMethod === 'shipping' ? (
+                                <div className="mt-4 space-y-4">
+                                    <div>
+                                        <Label htmlFor="address" className="text-gray-700">Dirección</Label>
+                                        <Input
+                                            id="address"
+                                            value={formData.address}
+                                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                            placeholder="Tu dirección completa"
+                                            disabled={isProcessing}
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="postalCode" className="text-gray-700">Código Postal</Label>
+                                        <Input
+                                            id="postalCode"
+                                            value={formData.postalCode}
+                                            onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                                            placeholder="Ej: 4600"
+                                            disabled={isProcessing}
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="mt-4 text-sm text-gray-600">
+                                    Retirá gratis en nuestra sucursal de <span className="font-medium">Villafañe 75, Perico, Jujuy, Argentina</span>.
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-sm p-6">
                             <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                                 <CreditCard className="h-5 w-5 mr-2" />
                                 Datos de Contacto
@@ -316,25 +378,13 @@ export default function CartPage() {
                                         type="tel"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        placeholder="+57 300 123 4567"
+                                        placeholder="388 123-4567"
                                         disabled={isProcessing}
                                         className="mt-1"
                                     />
                                 </div>
 
-                                <div>
-                                    <Label htmlFor="address" className="text-gray-700">
-                                        Dirección de Envío
-                                    </Label>
-                                    <Input
-                                        id="address"
-                                        value={formData.address}
-                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                        placeholder="Tu dirección completa"
-                                        disabled={isProcessing}
-                                        className="mt-1"
-                                    />
-                                </div>
+
                             </div>
 
                             <Button

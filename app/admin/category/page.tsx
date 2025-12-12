@@ -120,7 +120,7 @@ export default function AdminCategoriesPage() {
           {!showForm && (
             <Button
               onClick={() => setShowForm(true)}
-              className="bg-red-600 hover:bg-red-700 text-white gap-2 shadow-lg shadow-red-600/20"
+              className=""
             >
               <Plus className="h-4 w-4" />
               Nueva Categoría

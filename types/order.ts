@@ -11,6 +11,7 @@ export interface IOrder {
   orderNumber: string
   customerName: string
   customerAddress?: string
+  customerPostalCode?: string
   customerPhone: string
   shipping?:boolean
   items: IOrderItem[]
