@@ -113,7 +113,9 @@ export default function EditOrderModal({ isOpen, onClose, order, onOrderUpdated 
         name: productToAdd.name,
         quantity: selectedQuantity,
         price: productToAdd.salePrice || productToAdd.price,
-        image: productToAdd.image || "/placeholder.jpg",
+        image: Array.isArray(productToAdd.image)
+          ? (productToAdd.image[0] || "/placeholder.jpg")
+          : (productToAdd.image || "/placeholder.jpg"),
       }
       setProducts([...products, orderProduct])
     }
@@ -255,7 +257,7 @@ export default function EditOrderModal({ isOpen, onClose, order, onOrderUpdated 
                       >
                         <div className="flex items-start gap-3">
                           <Image
-                            src={product.image || "/placeholder.jpg"}
+                            src={Array.isArray(product.image) ? (product.image[0] || "/placeholder.jpg") : (product.image || "/placeholder.jpg")}
                             width={48}
                             height={48}
                             alt={product.name}

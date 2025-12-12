@@ -64,7 +64,6 @@ export function ShopHeader({
     }).format(price)
   }
 
-  console.log(items)
   return (
     <>
       <header className="bg-white border-b-2 border-red-600 top-0 z-50">

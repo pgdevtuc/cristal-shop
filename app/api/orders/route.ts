@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
       customerAddress: shipping ? customerAddress : undefined,
       items: orderItems,
       totalAmount: computedTotal,
-      status: status ?? "PENDING",
+      status: status ?? "CREATED",
       createdAt: nowAR,
       updatedAt: nowAR,
     })

@@ -15,13 +15,13 @@ export async function GET() {
 
     // Get completed orders count
     const completedOrders = await Order.countDocuments({
-      status: "Completado",
+      status: "DELIVERED",
     })
 
     // Get total earnings from completed orders
     const earningsResult = await Order.aggregate([
-      { $match: { status: "Completado" } },
-      { $group: { _id: null, total: { $sum: "$total" } } },
+      { $match: { paymentStatus: "ACCEPTED" } },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
     ])
 
     const totalEarnings = earningsResult.length > 0 ? earningsResult[0].total : 0

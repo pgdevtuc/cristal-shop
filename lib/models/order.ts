@@ -18,7 +18,7 @@ export interface IOrder extends Document {
   shipping: boolean
   items: IOrderItem[]
   totalAmount: number
-  status: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED"
+  status: "CREATED" | "PAYMENT_FAILED" | "PAID" | "PREPARING" | "READY" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED"
   paymentId?: number
   authorizationCode?: string
   refNumber: string
@@ -91,8 +91,8 @@ const OrderSchema = new Schema<IOrder>(
     },
     status: {
       type: String,
-      enum: ["PENDING", "PROCESSING", "SUCCESS", "FAILED", "CANCELLED"],
-      default: "PENDING",
+      enum: ["CREATED", "PAYMENT_FAILED", "PAID", "PREPARING", "READY", "IN_TRANSIT", "DELIVERED", "CANCELLED"],
+      default: "CREATED",
     },
     paymentId: {
       type: Number,

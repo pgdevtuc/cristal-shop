@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         shipping: cart.shipping,
         items: cart.items,
         totalAmount: cart.totalAmount,
-        status: "PROCESSING",
+        status: "CREATED",
         paymentStatus: status,
         stockUpdated: false,
         createdAt: getArgentinaDate(),
@@ -58,10 +58,10 @@ export async function POST(req: Request) {
     }
 
     // Manejo de estados
-    let newStatus = "PROCESSING";
+    let newStatus = "CREATED";
 
     if (status === "ACCEPTED") {
-      newStatus = "SUCCESS";
+      newStatus = "PAID";
 
       if (!order.stockUpdated) {
         for (const item of cart.items) {
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
         order.stockUpdated = true;
       }
     }
-    if (status === "REJECTED") newStatus = "FAILED";
+    if (status === "REJECTED") newStatus = "PAYMENT_FAILED";
 
     // Actualizar order final
     order.status = newStatus;

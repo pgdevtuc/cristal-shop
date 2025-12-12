@@ -16,7 +16,7 @@ export interface IOrder {
   shipping?:boolean
   items: IOrderItem[]
   totalAmount: number
-  status: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED"
+  status: "CREATED" | "PAYMENT_FAILED" | "PAID" | "PREPARING" | "READY" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED"
   viumiOrderId?: string
   viumiOrderNumber?: string
   paymentId?: number

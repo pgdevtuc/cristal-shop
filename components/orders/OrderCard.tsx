@@ -24,16 +24,22 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
 
   const getStatusColor = (status: IOrder["status"]) => {
     switch (status) {
-      case "SUCCESS":
-        return "bg-green-500 text-white hover:bg-green-700"
-      case "PROCESSING":
-        return "bg-blue-500 text-white hover:bg-blue-700"
-      case "PENDING":
-        return "bg-yellow-500 text-white hover:bg-yellow-700"
-      case "FAILED":
-        return "bg-red-500 text-white hover:bg-red-700"
+      case "CREATED":
+        return "bg-yellow-500 text-white hover:bg-yellow-600"
+      case "PAYMENT_FAILED":
+        return "bg-red-600 text-white hover:bg-red-700"
+      case "PAID":
+        return "bg-green-600 text-white hover:bg-green-700"
+      case "PREPARING":
+        return "bg-blue-500 text-white hover:bg-blue-600"
+      case "READY":
+        return "bg-purple-500 text-white hover:bg-purple-600"
+      case "IN_TRANSIT":
+        return "bg-indigo-500 text-white hover:bg-indigo-600"
+      case "DELIVERED":
+        return "bg-green-700 text-white hover:bg-green-800"
       case "CANCELLED":
-        return "bg-gray-500 text-white hover:bg-gray-700"
+        return "bg-gray-500 text-white hover:bg-gray-600"
       default:
         return "bg-gray-500 text-white"
     }
@@ -42,30 +48,36 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
   const getPaymentStatusSpanish = (status: string) => {
     switch (status) {
       case "SCANNED":
-        return "QR Escaneado"
+        return "QR escaneado"
+      case "PROCESSING":
+        return "En proceso"
       case "REJECTED":
         return "Rechazado"
-      case "PROCESSING":
-        return "En Proceso"
       case "ACCEPTED":
-        return "Pagago"
+        return "Pagado"
       default:
-        return status
+        return status || "Sin pago"
     }
   }
 
   const getStatusLabel = (status: IOrder["status"]) => {
     switch (status) {
-      case "SUCCESS":
-        return "Completado"
-      case "PROCESSING":
-        return "En Proceso"
-      case "PENDING":
-        return "Pendiente"
-      case "FAILED":
-        return "Fallido"
+      case "CREATED":
+        return "Creada"
+      case "PAYMENT_FAILED":
+        return "Pago rechazado"
+      case "PAID":
+        return "Pagada"
+      case "PREPARING":
+        return "Preparando"
+      case "READY":
+        return "Listo"
+      case "IN_TRANSIT":
+        return "En camino"
+      case "DELIVERED":
+        return "Entregado"
       case "CANCELLED":
-        return "Cancelado"
+        return "Cancelada"
       default:
         return status
     }
@@ -79,6 +91,23 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
     }).format(amount)
   }
 
+  const getAllowedNextStatuses = (): IOrder["status"][] => {
+    const current = order.status
+    const flow: IOrder["status"][] = order.shipping
+      ? ["PAID", "PREPARING", "READY", "IN_TRANSIT", "DELIVERED"]
+      : ["PAID", "PREPARING", "READY", "DELIVERED"]
+
+    if (current === "DELIVERED" || current === "CANCELLED") return []
+    if (current === "CREATED") return ["PAID", "CANCELLED"]
+    if (current === "PAYMENT_FAILED") return ["CANCELLED"]
+
+    const idx = flow.indexOf(current)
+    if (idx >= 0 && idx < flow.length - 1) {
+      return [flow[idx + 1], "CANCELLED"]
+    }
+    return []
+  }
+
   return (
     <Card className="mb-4">
       <CardContent className="p-3 md:p-4">
@@ -89,10 +118,10 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
               <Button variant="ghost" size="sm" className="p-1">
                 {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </Button>
-              <span className="font-medium text-sm md:text-base">Orden #{order.orderNumber}</span>
+              <span className="font-medium text-sm md:text-base">ID #{order._id}</span>
               <Badge className={getStatusColor(order.status)}>{getStatusLabel(order.status)}</Badge>
-              <Badge className={`${order.shipping ? "bg-green-400 hover:bg-green-500 text-gray-600" : "bg-gray-300 hover:bg-gray-100 text-gray-600"}`}>{order.shipping ? "Con Envio" : "Sin Envio"}</Badge>
-              <Badge className={`${order.paymentStatus === "ACCEPTED"? "bg-green-600 hover:bg-green-500 text-gray-600" : order.paymentStatus === "REJECTED"? "bg-red-600 hover:bg-red-400 text-white":order.paymentStatus === "PROCESSING" ? "bg-blue-500 hover:bg-blue-600 text-white":"bg-gray-500 hover:bg-gray-500 text-white"}`}>{getPaymentStatusSpanish(order.paymentStatus ?? "")}</Badge>
+              <Badge className={`${order.shipping ? "bg-green-400 hover:bg-green-500 text-gray-600" : "bg-gray-300 hover:bg-gray-100 text-gray-600"}`}>{order.shipping ? "Con Envío" : "Sin Envío"}</Badge>
+              <Badge className={`${order.paymentStatus === "ACCEPTED" ? "bg-green-600 hover:bg-green-500 text-white" : order.paymentStatus === "REJECTED" ? "bg-red-600 hover:bg-red-400 text-white" : order.paymentStatus === "PROCESSING" || order.paymentStatus === "SCANNED" ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-gray-500 hover:bg-gray-500 text-white"}`}>{getPaymentStatusSpanish(order.paymentStatus ?? "")}</Badge>
 
             </div>
           </div>
@@ -135,15 +164,21 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
                   value={order.status}
                   onValueChange={(newStatus: IOrder["status"]) => onStatusChange(order._id, newStatus)}
                 >
-                  <SelectTrigger className="w-full md:w-40">
-                    <SelectValue />
+                  <SelectTrigger className="w-full md:w-56">
+                    <SelectValue placeholder="Cambiar estado" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PENDING">Pendiente</SelectItem>
-                    <SelectItem value="PROCESSING">En Proceso</SelectItem>
-                    <SelectItem value="SUCCESS">Completado</SelectItem>
-                    <SelectItem value="FAILED">Fallido</SelectItem>
-                    <SelectItem value="CANCELLED">Cancelado</SelectItem>
+                    {getAllowedNextStatuses().length === 0 ? (
+                      <SelectItem value={order.status} disabled>
+                        {getStatusLabel(order.status)}
+                      </SelectItem>
+                    ) : (
+                      getAllowedNextStatuses().map((st) => (
+                        <SelectItem key={st} value={st}>
+                          {getStatusLabel(st)}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -237,9 +272,9 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
                 )}
                 {order.paymentStatus && (
                   <div>
-                    <span className="text-muted-foreground">Estado Pago: </span>
-                    <span className={order.paymentStatus === "APPROVED" ? "text-green-600 font-medium" : ""}>
-                      {order.paymentStatus}
+                    <span className="text-muted-foreground">Estado de pago: </span>
+                    <span className={order.paymentStatus === "ACCEPTED" ? "text-green-600 font-medium" : order.paymentStatus === "REJECTED" ? "text-red-600 font-medium" : ""}>
+                      {getPaymentStatusSpanish(order.paymentStatus)}
                     </span>
                   </div>
                 )}

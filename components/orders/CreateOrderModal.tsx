@@ -37,7 +37,9 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
   const [customerPhone, setCustomerPhone] = useState("")
   const [shipping, setShipping] = useState(false)
   const [customerAddress, setCustomerAddress] = useState("")
-  const [status, setStatus] = useState<"PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "CANCELLED">("PENDING")
+  const [status, setStatus] = useState<
+    "CREATED" | "PAYMENT_FAILED" | "PAID" | "PREPARING" | "READY" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED"
+  >("CREATED")
   const [isLoading, setIsLoading] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
 
@@ -101,7 +103,9 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
         name: productToAdd.name,
         quantity: selectedQuantity,
         price: productToAdd.salePrice || productToAdd.price,
-        image: productToAdd.image || "/placeholder.jpg",
+        image: Array.isArray(productToAdd.image)
+          ? (productToAdd.image[0] || "/placeholder.jpg")
+          : (productToAdd.image || "/placeholder.jpg"),
       }
       setProducts([...products, orderProduct])
     }
@@ -164,7 +168,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
         setCustomerPhone("")
         setCustomerAddress("")
         setShipping(false)
-        setStatus("PENDING")
+        setStatus("CREATED")
 
         onOrderCreated()
         onClose()
@@ -218,7 +222,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                       >
                         <div className="flex items-start gap-3">
                           <Image
-                            src={product.image || "/placeholder.jpg"}
+                            src={Array.isArray(product.image) ? (product.image[0] || "/placeholder.jpg") : (product.image || "/placeholder.jpg")}
                             width={48}
                             height={48}
                             alt={product.name}
@@ -287,7 +291,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                   <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-3 flex-1">
                       <Image
-                        src={product.image || "/placeholder.jpg"}
+                        src={Array.isArray(product.image) ? (product.image[0] || "/placeholder.jpg") : (product.image || "/placeholder.jpg")}
                         width={48}
                         height={48}
                         alt={product.name}
@@ -353,11 +357,14 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                     <SelectValue placeholder="Seleccionar estado" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PENDING">Pendiente</SelectItem>
-                    <SelectItem value="PROCESSING">En Proceso</SelectItem>
-                    <SelectItem value="SUCCESS">Completado</SelectItem>
-                    <SelectItem value="FAILED">Fallido</SelectItem>
-                    <SelectItem value="CANCELLED">Cancelado</SelectItem>
+                    <SelectItem value="CREATED">Creada</SelectItem>
+                    <SelectItem value="PAID">Pagada</SelectItem>
+                    <SelectItem value="PREPARING">Preparando</SelectItem>
+                    <SelectItem value="READY">Listo</SelectItem>
+                    <SelectItem value="IN_TRANSIT">En camino</SelectItem>
+                    <SelectItem value="DELIVERED">Entregado</SelectItem>
+                    <SelectItem value="CANCELLED">Cancelada</SelectItem>
+                    <SelectItem value="PAYMENT_FAILED">Pago rechazado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

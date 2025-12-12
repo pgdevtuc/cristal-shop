@@ -28,6 +28,7 @@ export default function PaymentPage() {
     const [timeRemaining, setTimeRemaining] = useState<number>(0)
     const [isCheckingStatus, setIsCheckingStatus] = useState(false)
 
+
     // Función para formatear el tiempo restante
     const formatTime = (seconds: number): string => {
         const minutes = Math.floor(seconds / 60)
@@ -226,7 +227,7 @@ export default function PaymentPage() {
                             Pagar con Modo
                         </h1>
                         <p className="text-gray-600 text-sm">
-                            Orden #{paymentData.orderNumber}
+                            Orden #{paymentData.orderId}
                         </p>
                     </div>
 
