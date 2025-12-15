@@ -165,20 +165,17 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
                   onValueChange={(newStatus: IOrder["status"]) => onStatusChange(order._id, newStatus)}
                 >
                   <SelectTrigger className="w-full md:w-56">
-                    <SelectValue placeholder="Cambiar estado" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAllowedNextStatuses().length === 0 ? (
-                      <SelectItem value={order.status} disabled>
-                        {getStatusLabel(order.status)}
+                    <SelectItem value={order.status} disabled>
+                      {getStatusLabel(order.status)}
+                    </SelectItem>
+                    {getAllowedNextStatuses().map((st) => (
+                      <SelectItem key={st} value={st}>
+                        {getStatusLabel(st)}
                       </SelectItem>
-                    ) : (
-                      getAllowedNextStatuses().map((st) => (
-                        <SelectItem key={st} value={st}>
-                          {getStatusLabel(st)}
-                        </SelectItem>
-                      ))
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -221,7 +218,7 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
 
             {/* Información adicional */}
             <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                 <div>
                   <span className="text-muted-foreground">Cliente: </span>
                   <span className="font-medium">{order.customerName}</span>
@@ -236,29 +233,24 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
                   <span className="text-muted-foreground">Telefono: </span>
                   <span>{order.customerPhone}</span>
                 </div>
+                {order.customerEmail && (
+                  <div>
+                    <span className="text-muted-foreground">Email: </span>
+                    <span className="font-mono">{order.customerEmail}</span>
+                  </div>
+                )}
                 <div>
                   <span className="text-muted-foreground">Fecha: </span>
                   <span>{format(new Date(order.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}</span>
                 </div>
-                
+
                 {order.paymentId && (
                   <div>
                     <span className="text-muted-foreground">ID Pago MODO: </span>
                     <span>{order.paymentId}</span>
                   </div>
                 )}
-                {order.authorizationCode && (
-                  <div>
-                    <span className="text-muted-foreground">Código Autorización: </span>
-                    <span className="font-mono">{order.authorizationCode}</span>
-                  </div>
-                )}
-                {order.refNumber && (
-                  <div>
-                    <span className="text-muted-foreground">Ref. Número: </span>
-                    <span className="font-mono">{order.refNumber}</span>
-                  </div>
-                )}
+
                 {order.paymentStatus && (
                   <div>
                     <span className="text-muted-foreground">Estado de pago: </span>
@@ -267,6 +259,13 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
                     </span>
                   </div>
                 )}
+                {order.refNumber && (
+                  <div>
+                    <span className="text-muted-foreground">Ref. Número: </span>
+                    <span className="font-mono">{order.refNumber}</span>
+                  </div>
+                )}
+
                 {order.card && (
                   <div>
                     <span className="text-muted-foreground">Tarjeta: </span>

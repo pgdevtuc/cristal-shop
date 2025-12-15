@@ -4,6 +4,7 @@ import Order from "@/lib/models/order"
 import Product from "@/lib/models/product"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { enviarEmail } from "@/lib/template-mail"
 
 import type { PipelineStage } from "mongoose"; // 👈 importante
 
@@ -90,7 +91,7 @@ export async function GET(req: NextRequest) {
     // Alternativa: pipeline.push({ $sort: { createdAt: -1 } as const });
 
     const orders = await Order.aggregate(pipeline);
-    console.log("Fetched orders with aggregation pipeline:", orders);
+
     return NextResponse.json(orders);
   } catch (error) {
     console.error("Error fetching orders:", error);
@@ -227,6 +228,62 @@ export async function PUT(request: NextRequest) {
 
       if (!updatedOrder) {
         return NextResponse.json({ error: "Order not found" }, { status: 404 })
+      }
+
+      // Enviar email de pago aprobado si se marcó como PAID
+      if (updatedOrder.customerEmail) {
+        try {
+          const productos = updatedOrder.items.map((it: any) => ({
+            nombre: it.name,
+            imagen: it.image || "",
+            cantidad: it.quantity as any,
+            precio: it.price,
+          }));
+          const subtotal = updatedOrder.items.reduce(
+            (acc: number, it: any) => acc + it.price * it.quantity,
+            0,
+          );
+          const tarjetaStr = updatedOrder.card
+            ? `${updatedOrder.card.issuer_name || "Tarjeta"} terminada en ${updatedOrder.card.last_digits || ""}`
+            : "Pago confirmado";
+
+          const dataForMail: any = {
+            email: updatedOrder.customerEmail,
+            nombre: updatedOrder.customerName,
+            numeroPedido: String(updatedOrder._id),
+            tarjeta: tarjetaStr,
+            envio: Boolean(updatedOrder.shipping),
+            direccion: updatedOrder.customerAddress,
+            codigoPostal: updatedOrder.customerPostalCode,
+            productos,
+            subtotal,
+            descuentos: 0,
+            costoEnvio: 0,
+            total: updatedOrder.totalAmount,
+            sucursalRetiro: "Villafañe 75, Perico, Jujuy, Argentina",
+          };
+
+          switch (status) {
+            case "PREPARING":
+              await enviarEmail("pedido_preparacion", dataForMail);
+              break;
+
+            case "IN_TRANSIT":
+              await enviarEmail("preparado_enviado", dataForMail);
+              break;
+
+            case "READY":
+              await enviarEmail("preparado_enviado", dataForMail);
+              break;
+
+            default:
+              break;
+          }
+
+
+        } catch (e) {
+          console.error("Error enviando email pago aprobado (PUT orders):", e);
+        }
       }
 
       return NextResponse.json(updatedOrder)

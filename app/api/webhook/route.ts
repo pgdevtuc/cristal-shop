@@ -4,6 +4,7 @@ import Cart from "@/lib/models/carts";
 import Product from "@/lib/models/product";
 import connectDB from "@/lib/database";
 import { verifySignature } from "@/lib/modo-signature";
+import { enviarEmail } from "@/lib/template-mail";
 
 export const runtime = "nodejs";
 
@@ -61,6 +62,7 @@ export async function POST(req: Request) {
     // Manejo de estados
     let newStatus = "CREATED";
 
+
     if (status === "ACCEPTED") {
       newStatus = "PAID";
       if (card) {
@@ -82,8 +84,69 @@ export async function POST(req: Request) {
 
         order.stockUpdated = true;
       }
+      // Enviar email de pago aprobado
+      try {
+        const productos = cart.items.map((it: any) => ({
+          nombre: it.name,
+          imagen: it.image || "",
+          cantidad: it.quantity as any,
+          precio: it.price
+        }));
+        const subtotal = cart.items.reduce((acc: number, it: any) => acc + it.price * it.quantity, 0);
+        const tarjetaStr =
+          (order.card && ((order.card.issuer_name || "Tarjeta") + " terminada en " + (order.card.last_digits || ""))) ||
+          (card && ((card.issuer_name || "Tarjeta") + " terminada en " + (card.last_digits || ""))) ||
+          "Pago confirmado";
+        const dataForMail: any = {
+          email: order.customerEmail || cart.customerEmail,
+          nombre: order.customerName || cart.customerName,
+          numeroPedido: String(order._id),
+          tarjeta: tarjetaStr,
+          envio: Boolean(order.shipping ?? cart.shipping),
+          direccion: order.customerAddress || cart.customerAddress,
+          codigoPostal: order.customerPostalCode || cart.customerPostalCode,
+          productos,
+          subtotal,
+          descuentos: 0,
+          costoEnvio: 0,
+          total: cart.totalAmount,
+          sucursalRetiro: " Villafañe 75, Perico, Jujuy, Argentina"
+        };
+        await enviarEmail("pago_aprobado", dataForMail);
+      } catch (e) {
+        console.error("Error enviando email pago aprobado (webhook):", e);
+      }
     }
-    if (status === "REJECTED") newStatus = "PAYMENT_FAILED";
+    if (status === "REJECTED") {
+      newStatus = "PAYMENT_FAILED";
+      const productos = cart.items.map((it: any) => ({
+        nombre: it.name,
+        imagen: it.image || "",
+        cantidad: it.quantity as any,
+        precio: it.price
+      }));
+      const subtotal = cart.items.reduce((acc: number, it: any) => acc + it.price * it.quantity, 0);
+      const tarjetaStr =
+        (order.card && ((order.card.issuer_name || "Tarjeta") + " terminada en " + (order.card.last_digits || ""))) ||
+        (card && ((card.issuer_name || "Tarjeta") + " terminada en " + (card.last_digits || ""))) ||
+        "Pago Rechazado";
+      const dataForMail: any = {
+        email: order.customerEmail || cart.customerEmail,
+        nombre: order.customerName || cart.customerName,
+        numeroPedido: String(order._id),
+        tarjeta: tarjetaStr,
+        envio: Boolean(order.shipping ?? cart.shipping),
+        direccion: order.customerAddress || cart.customerAddress,
+        codigoPostal: order.customerPostalCode || cart.customerPostalCode,
+        productos,
+        subtotal,
+        descuentos: 0,
+        costoEnvio: 0,
+        total: cart.totalAmount,
+        sucursalRetiro: ""
+      };
+      await enviarEmail("pago_rechazado", dataForMail);
+    }
 
     // Actualizar order final
     order.status = newStatus;

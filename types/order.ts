@@ -10,6 +10,7 @@ export interface IOrder {
   _id: string
   orderNumber: string
   customerName: string
+  customerEmail:string
   customerAddress?: string
   customerPostalCode?: string
   customerPhone: string
