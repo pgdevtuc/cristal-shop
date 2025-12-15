@@ -94,7 +94,7 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
   const getAllowedNextStatuses = (): IOrder["status"][] => {
     const current = order.status
     const flow: IOrder["status"][] = order.shipping
-      ? ["PAID", "PREPARING", "READY", "IN_TRANSIT", "DELIVERED"]
+      ? ["PAID", "PREPARING", "IN_TRANSIT", "DELIVERED"]
       : ["PAID", "PREPARING", "READY", "DELIVERED"]
 
     if (current === "DELIVERED" || current === "CANCELLED") return []
