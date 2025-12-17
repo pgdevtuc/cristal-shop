@@ -212,20 +212,19 @@ export default async function FilterPage({ searchParams }: PageProps) {
                 }
             >
                 <ShopHeader />
+                <main>
+                    <WhatsAppProductCatalog
+                        initialProducts={productsData.products}
+                        initialCatObjects={categoriesData.categoryObjects}
+                        initialCategories={categoriesData.categories}
+                        initialSearchTerm={normalizedParams.q}
+                        initialCategory={normalizedParams.category}
+                        initialPriceFilter={normalizedParams.priceFilter}
+                        initialPage={productsData.currentPage}
+                        initialTotalPages={productsData.totalPages}
+                    />
+                </main>
             </Suspense>
-
-            <main>
-                <WhatsAppProductCatalog
-                    initialProducts={productsData.products}
-                    initialCatObjects={categoriesData.categoryObjects}
-                    initialCategories={categoriesData.categories}
-                    initialSearchTerm={normalizedParams.q}
-                    initialCategory={normalizedParams.category}
-                    initialPriceFilter={normalizedParams.priceFilter}
-                    initialPage={productsData.currentPage}
-                    initialTotalPages={productsData.totalPages}
-                />
-            </main>
         </div>
     )
 }

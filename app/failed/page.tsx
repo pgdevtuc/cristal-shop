@@ -7,8 +7,6 @@ import { ShopHeader } from "@/components/layout/whatsapp-header"
 
 export default function FailedPage() {
   const router = useRouter()
-
-
   return (
     <>
       <ShopHeader />
