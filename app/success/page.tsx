@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { CheckCircle, Package, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -26,7 +26,11 @@ export default function SuccessPage() {
 
   return (
     <>
-      <ShopHeader />
+      <Suspense fallback={<div className="flex items-center justify-center p-4">
+        <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-primary rounded-full" />
+      </div>}>
+        <ShopHeader />
+      </Suspense>
       <div className="flex items-center justify-center bg-white to-teal-100 pt-10">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
           <div className="mb-6">
