@@ -88,6 +88,7 @@ function normalizeHeader(h: string) {
   if (s.includes("stock")) return "stock"
   if (s.includes("Colores") || s.includes("colores") || s.includes("Colors") || s.includes("colors")) return "colors"
   if (s.includes("Caracteristicas") || s.includes("caracteristicas")) return "features"
+  if (s.includes("Moneda") || s.includes("moneda")) return "currency"
   return s.replace(/\s+/g, "_")
 }
 
@@ -136,7 +137,8 @@ export async function POST(req: Request) {
             obj.Color ||
             obj.color ||
             "",
-          features: obj.features || obj.caracteristicas || obj.Caracteristicas || ""
+          features: obj.features || obj.caracteristicas || obj.Caracteristicas || "",
+          currency: obj.currency || obj.moneda || obj.Moneda || ""
         }
       })
 
@@ -198,9 +200,9 @@ export async function POST(req: Request) {
               .map((c) => c.trim())
               .filter(Boolean)
             : []
+        const currency = row.currency ?? row.moneda ?? row.Moneda ?? ""
 
-
-        if (!name || !description || !category || !image || Number.isNaN(price)) {
+        if (!name || Number.isNaN(price)) {
           errors.push({ row: i + 2, reason: "Faltan campos requeridos o precio inválido", data: row })
           continue
         }
@@ -214,7 +216,8 @@ export async function POST(req: Request) {
           stock: Number(stock) || 0,
           price: Number(price),
           colors: colores,
-          features
+          features,
+          currency: currency?.toLowerCase() === "pesos" ? "ARS" : "USD"
         })
       }
 
@@ -225,8 +228,6 @@ export async function POST(req: Request) {
       if (toInsert.length === 0) {
         return NextResponse.json({ error: "No hay filas válidas para insertar" }, { status: 400 })
       }
-
-      console.log(toInsert)
       // Insert many
       const inserted = await Product.insertMany(toInsert)
 

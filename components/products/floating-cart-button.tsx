@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart } from "lucide-react"
 import { useCart } from "@/contexts/cart-context"
+import Link from "next/link"
 
 export function FloatingCartButton() {
   const [isVisible, setIsVisible] = useState(false)
@@ -24,10 +25,10 @@ export function FloatingCartButton() {
   if (!isVisible) return null
 
   return (
-    <>
+    <Link href="/cart">
       <Button
         onClick={() => setIsCartOpen(true)}
-        className="floating-cart-btn bg-primary hover:bg-primary/80 text-white px-8 py-3 md:hidden"
+        className="z-10 floating-cart-btn bg-primary hover:bg-primary/80 text-white px-8 py-3 md:hidden"
         style={{
           position: "fixed",
           bottom: "20px",
@@ -43,6 +44,6 @@ export function FloatingCartButton() {
         Ir al Carrito ({totalItems})
       </Button>
 
-    </>
+    </Link>
   )
 }

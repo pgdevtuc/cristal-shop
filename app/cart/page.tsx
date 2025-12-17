@@ -1,6 +1,5 @@
 "use client"
 
-import type React from "react"
 import { Suspense, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -28,7 +27,6 @@ import {
 } from "lucide-react"
 
 export default function CartPage() {
-    const router = useRouter()
     const { items, updateQuantity, removeItem, getTotalPrice, clearCart } = useCart()
     const [isProcessing, setIsProcessing] = useState(false)
     const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'shipping'>('pickup')
@@ -95,19 +93,11 @@ export default function CartPage() {
 
             // Guardar datos en localStorage para la página de pago
             if (result.checkout && result.orderId) {
-                localStorage.setItem('pendingPayment', JSON.stringify({
-                    qrString: result.checkout.qr || '',
-                    deeplink: result.checkout.deeplink || '',
-                    amount: total,
-                    orderId: result.orderId,
-                    timestamp: Date.now()
-                }))
 
-                // Redirigir a la página de pago
-                router.push(`/payment/${result.orderId}`)
                 toast.success("Redirigiendo al pago...")
+                window.location.href = result.checkout.deeplink
             } else {
-                toast.error("Error: No se recibió información de pago")
+                toast.error("Error",{description: "No se pudo procesar el pago"})
             }
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Error al procesar el pedido")
@@ -150,7 +140,6 @@ export default function CartPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             <ShopHeader />
-
             <div className="max-w-7xl mx-auto px-4 py-4">
                 <nav className="flex items-center gap-2 text-sm text-gray-500">
                     <Link href="/" className="hover:text-red-600 transition-colors">

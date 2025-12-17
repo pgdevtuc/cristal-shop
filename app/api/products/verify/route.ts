@@ -1,6 +1,7 @@
 import product from "@/lib/models/product";
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/database";
+import dolarReference from "@/lib/models/dolarReference";
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -11,7 +12,16 @@ export async function GET(req: Request) {
         await connectDB();
         const findProduct = await product.findById(id)
         
-        if (findProduct) return NextResponse.json({ product: {...findProduct._doc,image:Array.isArray((findProduct as any).image) ? (findProduct as any).image : (findProduct as any).image ? [(findProduct as any).image] : [],id:findProduct._id} }, { status: 200 })
+        if (findProduct) {
+            const dolar = await dolarReference.findOne({}).lean()
+            const dolarPrice = Number((dolar as any)?.price) || 1
+            const doc: any = (findProduct as any)._doc || findProduct
+            const isUSD = doc.currency === "USD"
+            const price = isUSD ? doc.price * dolarPrice : doc.price
+            const salePrice = doc.salePrice && doc.salePrice > 0 ? (isUSD ? doc.salePrice * dolarPrice : doc.salePrice) : null
+            const images = Array.isArray(doc.image) ? doc.image : (doc.image ? [doc.image] : [])
+            return NextResponse.json({ product: { ...doc, image: images, id: findProduct._id.toString(), price, salePrice, currency: doc.currency || "ARS" } }, { status: 200 })
+        }
         return NextResponse.json({ message: "No se encontro el producto" }, { status: 400 })
 
     } catch (error) {

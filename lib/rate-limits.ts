@@ -1,5 +1,5 @@
 
-const RATE_LIMIT =10; 
+const RATE_LIMIT =20; 
 const WINDOW_MS = 60 * 1000; // 1 minuto
 
 // Map para almacenar IP => array de timestamps

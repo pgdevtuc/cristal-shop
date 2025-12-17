@@ -3,39 +3,44 @@ import connectDB from "@/lib/database"
 import Product from "@/lib/models/product"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import dolarReference from "@/lib/models/dolarReference"
+import { rateLimit } from "@/lib/rate-limits"
 
 export async function GET(req: Request) {
   try {
+
+    const ip = getClientIp(req)
+
+    if (rateLimit(ip)) {
+      return Response.json(
+        { error: "Too many requests, slow down." },
+        { status: 429 }
+      );
+    }
+
     const { searchParams } = new URL(req.url)
     const page = Math.max(1, Number(searchParams.get("page") ?? 1))
-    const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 12)))
-    const q = (searchParams.get("q") ?? "").trim()
+    const limit = 12//Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 12)))
+    const rawQ = searchParams.get("q") ?? ""
+    const q = decodeURIComponent(rawQ).trim()
     const category = (searchParams.get("category") ?? "").trim()
     const id = (searchParams.get("id") ?? "").trim()
     const priceFilter = (searchParams.get("priceFilter") ?? "").trim()
-    const maxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined
     const stockFilter = (searchParams.get("filter") ?? "").trim()
 
     await connectDB()
+    const dolar = await dolarReference.findOne({}).lean()
 
     const filter: any = q
       ? {
-          $or: [{ name: { $regex: q, $options: "i" } }, { category: { $regex: q, $options: "i" } }],
-        }
+        $or: [{ name: { $regex: q, $options: "i" } }, { category: { $regex: q, $options: "i" } }],
+      }
       : {}
 
-    if (category) filter.category = category
+    if (category) filter.category = category.toUpperCase();
 
     if (id) filter._id = { $ne: id }
 
-    if (maxPrice) {
-      filter.$or = [
-        { salePrice: { $gt: 0, $lte: maxPrice } },
-        {
-          $and: [{ $or: [{ salePrice: 0 }, { salePrice: { $exists: false } }] }, { price: { $lte: maxPrice } }],
-        },
-      ]
-    }
 
     // Stock/discount filters
     if (stockFilter === "inStock") {
@@ -66,13 +71,19 @@ export async function GET(req: Request) {
       .lean()
 
     // normalize image (now stored as array) and include colors if present
-    const items = rawItems.map((p) => ({
-      ...p,
-      id: (p as any)._id.toString(),
-      image: Array.isArray((p as any).image) ? (p as any).image : (p as any).image ? [(p as any).image] : [],
-      colors: Array.isArray((p as any).colors) ? (p as any).colors : (p as any).colors ? [(p as any).colors] : [],
-      features: Array.isArray((p as any).features) ? (p as any).features : (p as any).features ? [(p as any).features] : [],
-    }))
+    const dolarPrice = Number((dolar as any)?.price) || 1
+    const items = rawItems.map((p: any) => {
+      const isUSD = p.currency === "USD"
+      const price = isUSD ? p.price * dolarPrice : p.price
+      const salePrice = p.salePrice && p.salePrice > 0 ? (isUSD ? p.salePrice * dolarPrice : p.salePrice) : null
+      return {
+        ...p,
+        id: p._id.toString(),
+        price,
+        salePrice,
+        currency: p.currency || "ARS",
+      }
+    })
 
     const [inStock, outOfStock, discounted] = await Promise.all([
       Product.countDocuments({ stock: { $gt: 0 } }),
@@ -131,6 +142,7 @@ export async function POST(request: Request) {
       stock: product.stock || 0,
       salePrice: Number(product.salePrice) || 0,
       price: Number(product.price),
+      currency: product.currency === "USD" ? "USD" : "ARS",
     })
 
     const savedProduct = await newProduct.save()
@@ -159,22 +171,26 @@ export async function PUT(request: Request) {
       updateData.image = Array.isArray(updateData.image)
         ? updateData.image.map((s: any) => String(s || "").trim()).filter(Boolean)
         : updateData.image
-        ? [String(updateData.image).trim()]
-        : []
+          ? [String(updateData.image).trim()]
+          : []
     }
     if (updateData.colors) {
       updateData.colors = Array.isArray(updateData.colors)
         ? updateData.colors.map((s: any) => String(s || "").trim()).filter(Boolean)
         : updateData.colors
-        ? [String(updateData.colors).trim()]
-        : []
+          ? [String(updateData.colors).trim()]
+          : []
     }
     if (updateData.features) {
       updateData.features = Array.isArray(updateData.features)
         ? updateData.features.map((s: any) => String(s || "").trim()).filter(Boolean)
         : updateData.features
-        ? [String(updateData.features).trim()]
-        : []
+          ? [String(updateData.features).trim()]
+          : []
+    }
+
+    if (updateData.currency) {
+      updateData.currency = updateData.currency === "USD" ? "USD" : "ARS"
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
@@ -214,4 +230,18 @@ export async function DELETE(request: Request) {
   } catch (error) {
     return NextResponse.json({ error: "Error al eliminar producto" }, { status: 500 })
   }
+}
+
+
+function getClientIp(req: Request): string {
+  const headers = req.headers;
+
+  return (
+    headers.get("x-forwarded-for")?.split(",")[0]?.trim() || // proxies comunes
+    headers.get("x-real-ip") ||                              // Nginx
+    headers.get("cf-connecting-ip") ||                       // Cloudflare
+    headers.get("x-vercel-forwarded-for") ||                 // Vercel
+    (req as any).ip ||                                       // Node.js / Next local
+    "unknown"
+  );
 }

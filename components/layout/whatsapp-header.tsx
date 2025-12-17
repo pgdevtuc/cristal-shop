@@ -23,10 +23,13 @@ export function ShopHeader({
   onSearchChange,
   onSearch,
 }: ShopHeaderProps) {
-  const [localSearch, setLocalSearch] = useState(searchTerm)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const q = searchParams.get('q') ?? ""
   const { items, getTotalPrice } = useCart()
+  const [localSearch, setLocalSearch] = useState(q)
+
+  let countItems = items.reduce((prev, curr) => prev + curr.quantity, 0)
 
   const handleSearchChange = (value: string) => {
     setLocalSearch(value)
@@ -39,20 +42,17 @@ export function ShopHeader({
     const trimmedSearch = localSearch.trim()
 
     const params = new URLSearchParams()
-    const category = searchParams.get('category')
-    const pf = searchParams.get("priceFilter")
-    const mp = searchParams.get("maxPrice")
+    const category = searchParams.get('category') ?? undefined
+    const pf = searchParams.get("priceFilter") ?? undefined
+    const mp = searchParams.get("maxPrice") ?? undefined
 
-    params.set('q', encodeURIComponent(trimmedSearch))
+    if (trimmedSearch) params.set('q', trimmedSearch)
     if (category) params.set('category', category)
     if (pf) params.set('priceFilter', pf)
     if (mp) params.set('maxPrice', mp)
 
-    if (trimmedSearch) {
-      router.push(`/?${params.toString()}`)
-    } else {
-      router.push("/")
-    }
+    const qs = params.toString()
+    router.push(qs ? `/l?${qs}` : "/l")
     onSearch?.()
   }
 
@@ -115,7 +115,7 @@ export function ShopHeader({
                     <ShoppingCart className="h-5 w-5" />
                     {items && items.length > 0 && (
                       <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                        {items.length}
+                        {countItems}
                       </span>
                     )}
                   </div>

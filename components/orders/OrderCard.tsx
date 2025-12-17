@@ -5,12 +5,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react"
-import { format } from "date-fns"
-import { ca, es } from "date-fns/locale"
+import { ChevronDown, ChevronRight, ExternalLink, PhoneOutgoing } from "lucide-react"
+import { format, parseISO } from "date-fns"
+import { ca, es, enAU } from "date-fns/locale"
 import { IOrder } from "@/types/order"
 import Image from "next/image"
 import EditOrderModal from "@/components/orders/EditOrderModal"
+import { formatInTimeZone } from "date-fns-tz";
 
 interface OrderCardProps {
   order: IOrder
@@ -21,6 +22,10 @@ interface OrderCardProps {
 export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
+
+  const parsedPhone = (str: String) => {
+    return str.startsWith("54") ? `+${str}` : str.startsWith('+54') ? str : `+54${str}`
+  }
 
   const getStatusColor = (status: IOrder["status"]) => {
     switch (status) {
@@ -132,7 +137,12 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
               <span className="block font-medium text-foreground truncate">{order.customerName}</span>
             </div>
             <div>
-              <span className="block">{format(new Date(order.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}</span>
+              <span className="block">{formatInTimeZone(
+                parseISO(String(order.createdAt)),
+                "UTC",
+                "dd/MM/yyyy HH:mm",
+                { locale: es }
+              )}</span>
             </div>
             <div>
               <span className="block font-semibold text-foreground">{formatCurrency(order.totalAmount)}</span>
@@ -229,9 +239,17 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
                     <span>{order.customerAddress}</span>
                   </div>
                 )}
-                <div>
+                <div className="">
                   <span className="text-muted-foreground">Telefono: </span>
-                  <span>{order.customerPhone}</span>
+                  <a
+                    href={`https://wa.me/${parsedPhone(order.customerPhone)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400"
+                  >
+                    <PhoneOutgoing className="h-4 w-4" />
+                    <span>{parsedPhone(order.customerPhone)}</span>
+                  </a>
                 </div>
                 {order.customerEmail && (
                   <div>
@@ -241,7 +259,12 @@ export default function OrderCard({ order, onStatusChange, onUpdated }: OrderCar
                 )}
                 <div>
                   <span className="text-muted-foreground">Fecha: </span>
-                  <span>{format(new Date(order.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}</span>
+                  <span>{formatInTimeZone(
+                    parseISO(String(order.createdAt)),
+                    "UTC",
+                    "dd/MM/yyyy HH:mm",
+                    { locale: es }
+                  )}</span>
                 </div>
 
                 {order.paymentId && (

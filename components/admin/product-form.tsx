@@ -30,6 +30,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
     colors: (product as any)?.colors || [],
     features: (product as any)?.features || [],
     stock: product?.stock || "",
+    currency: (product as any)?.currency || "ARS",
   })
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
@@ -52,6 +53,30 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
 
   const [loading, setLoading] = useState(false)
 
+  // If editing a USD product, convert displayed price fields back to USD using current reference
+  useEffect(() => {
+    const prod: any = product
+    if (!prod || prod.currency !== "USD") return
+    let active = true
+    fetch("/api/dolar")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!active) return
+        const ref = Number(data?.reference?.price) || 0
+        if (ref > 0) {
+          const priceUSD = Number(prod.price) / ref
+          const saleUSD = prod.salePrice ? Number(prod.salePrice) / ref : 0
+          setFormData((prev: any) => ({
+            ...prev,
+            price: Math.round(priceUSD).toString(),
+            salePrice: saleUSD ? Math.round(saleUSD).toString() : "",
+          }))
+        }
+      })
+      .catch(() => {/* ignore */})
+    return () => { active = false }
+  }, [product])
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,7 +98,8 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
         features,
         salePrice: formData.salePrice ? Number(formData.salePrice.toString()) : null,
         price: Number(formData.price.toString()),
-        stock: Number(formData.stock.toString())
+        stock: Number(formData.stock.toString()),
+        currency: (formData as any).currency === "USD" ? "USD" : "ARS",
       }
 
       const response = await fetch("/api/products", {
@@ -111,7 +137,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Nombre del Producto</Label>
+                <Label htmlFor="name">Nombre del Producto *</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -120,7 +146,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                 />
               </div>
               <div>
-                <Label htmlFor="category">Categoría</Label>
+                <Label htmlFor="category">Categoría *</Label>
                 <select
                   id="category"
                   value={formData.category}
@@ -139,7 +165,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
             </div>
 
             <div>
-              <Label htmlFor="description">Descripción</Label>
+              <Label htmlFor="description">Descripción *</Label>
               <Textarea
                 id="description"
                 value={formData.description}
@@ -149,9 +175,9 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="price">Precio Regular</Label>
+                <Label htmlFor="price">Precio Regular *</Label>
                 <Input
                   id="price"
                   type="text"
@@ -171,7 +197,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                 />
               </div>
               <div>
-                <Label htmlFor="salePrice">Precio de Oferta (Opcional)</Label>
+                <Label htmlFor="salePrice">Precio de Oferta</Label>
                 <Input
                   id="salePrice"
                   type="text"
@@ -190,7 +216,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                 />
               </div>
               <div>
-                <Label htmlFor="stock">Stock</Label>
+                <Label htmlFor="stock">Stock *</Label>
                 <Input
                   id="stock"
                   type="text"
@@ -209,10 +235,22 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                   required
                 />
               </div>
+              <div>
+                <Label htmlFor="currency">Moneda</Label>
+                <select
+                  id="currency"
+                  value={(formData as any).currency}
+                  onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                  className="bg-white w-full border rounded-md px-2 py-2.5"
+                >
+                  <option value="ARS">ARS</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
             </div>
 
             <div>
-              <Label>Imágenes</Label>
+              <Label>Imágenes *</Label>
               <div className="space-y-2">
                 {(formData.images || []).map((img: string, idx: number) => (
                   <div key={idx} className="flex items-center gap-2">
@@ -255,7 +293,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
             </div>
 
             <div>
-              <Label>Colores (opcional)</Label>
+              <Label>Colores </Label>
               <div className="space-y-2">
                 {(formData.colors || []).map((c: string, idx: number) => (
                   <div key={idx} className="flex items-center gap-2">
@@ -297,7 +335,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
             </div>
 
             <div>
-              <Label>Características (opcional)</Label>
+              <Label>Características </Label>
               <div className="space-y-2">
                 {(formData.features || []).map((f: string, idx: number) => (
                   <div key={idx} className="flex items-center gap-2">

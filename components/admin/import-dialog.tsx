@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { X, Upload, FileText, Download,Eye } from "lucide-react"
+import { X, Upload, FileText, Download, Eye } from "lucide-react"
 import { toast } from "sonner"
 
 interface ImportDialogProps {
@@ -34,7 +34,7 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
         setPreviewItems(null)
         setStep('select')
       } else {
-        toast.error( "Solo se permiten archivos CSV y Excel (.xlsx)")
+        toast.error("Solo se permiten archivos CSV y Excel (.xlsx)")
       }
     }
   }
@@ -146,10 +146,12 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
                           <div className="text-muted-foreground text-xs">{row.Descripción || row.description}</div>
                         </div>
                         <div className="text-right text-xs">
+                          <div>Categoria: {row.category ?? row.Category ?? ""}</div>
                           <div>Precio: {row.Precio ?? row.price}</div>
                           <div>Stock: {row.Stock ?? row.stock ?? 0}</div>
                           <div>Colores: {row.colors ?? row.colors ?? ""}</div>
                           <div>Caracteristicas: {row.features ?? row.Caracteristicas ?? ""}</div>
+                          <div>Moneda: {row.currency ?? row.moneda ?? ""}</div>
                         </div>
                       </div>
                     ))}
@@ -172,6 +174,7 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
               <li>• Stock (opcional, por defecto 0)</li>
               <li>• Colores (opcional, por defecto ninguno)</li>
               <li>• Caracteristicas (opcional, por defecto ninguno)</li>
+              <li>• Moneda (opcional, por defecto ARS)</li>
             </ul>
             <Button variant="outline" size="sm" onClick={downloadTemplate} className="mt-3 w-full">
               <Download className="h-3 w-3 mr-2" />

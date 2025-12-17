@@ -9,6 +9,7 @@ export interface IProduct {
     stock: number
     colors?: string[]
     features?: string[]
+    currency?: "ARS" | "USD"
 }
 
 export interface Product {
@@ -22,4 +23,5 @@ export interface Product {
   stock: number
   colors?: string[]
   features?: string[]
+  currency?: "ARS" | "USD"
 }

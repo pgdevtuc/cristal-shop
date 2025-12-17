@@ -1,238 +1,266 @@
 "use client"
 
-import { Input } from "@/components/ui/input"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Search, Filter, X } from "lucide-react"
-import { useState } from "react"
-import { formatPrice } from "@/lib/formatPrice"
-
+import { X, SlidersHorizontal, ChevronDown, Check } from "lucide-react"
 
 interface ProductFiltersProps {
   categories: string[]
   selectedCategory: string
   onCategoryChange: (category: string) => void
-  searchTerm: string
-  onSearchChange: (term: string) => void
   priceFilter: string
   onPriceFilterChange: (filter: string) => void
-  maxPrice: number
-  onMaxPriceChange: (price: number) => void
+  clearFilter: () => void
 }
 
 export function ProductFilters({
   categories,
   selectedCategory,
   onCategoryChange,
-  searchTerm,
-  onSearchChange,
   priceFilter,
   onPriceFilterChange,
-  maxPrice,
-  onMaxPriceChange,
+  clearFilter,
 }: ProductFiltersProps) {
-  const [showCategories, setShowCategories] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
-
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
+  
+  // Estados temporales para mobile (solo se aplican al presionar "Aplicar")
   const [tempCategory, setTempCategory] = useState(selectedCategory)
   const [tempPriceFilter, setTempPriceFilter] = useState(priceFilter)
-  const [tempMaxPrice, setTempMaxPrice] = useState(maxPrice)
+
+  // Sincronizar estados temporales cuando se abra el modal
+  useEffect(() => {
+    if (showMobileFilters) {
+      setTempCategory(selectedCategory)
+      setTempPriceFilter(priceFilter)
+    }
+  }, [showMobileFilters, selectedCategory, priceFilter])
+
+  const hasActiveFilters = selectedCategory !== "all" || priceFilter !== "all"
+  const activeFilterCount = 
+    (selectedCategory !== "all" ? 1 : 0) + 
+    (priceFilter !== "all" ? 1 : 0)
 
   const priceOptions = [
-    { value: "all", label: "Todos los precios" },
+    { value: "all", label: "Sin ordenar" },
     { value: "low-to-high", label: "Menor a mayor" },
     { value: "high-to-low", label: "Mayor a menor" },
-    { value: "under-limit", label: "Precio límite" },
   ]
 
-  const applyCategoryFilters = () => {
+  const getPriceLabel = (value: string) => {
+    return priceOptions.find(opt => opt.value === value)?.label || "Sin ordenar"
+  }
+
+  const getCategoryLabel = (value: string) => {
+    return value === "all" ? "Todas las categorías" : value
+  }
+
+  const handleApplyFilters = () => {
     onCategoryChange(tempCategory)
-    setShowCategories(false)
-  }
-
-  const applyPriceFilters = () => {
     onPriceFilterChange(tempPriceFilter)
-    onMaxPriceChange(tempMaxPrice)
-    setShowFilters(false)
+    setShowMobileFilters(false)
   }
 
-  const handleCategoriesToggle = () => {
-    if (!showCategories) {
-      setTempCategory(selectedCategory)
-    }
-    setShowCategories(!showCategories)
+  const handleClearFilters = () => {
+    setTempCategory("all")
+    setTempPriceFilter("all")
+    clearFilter()
+    setShowMobileFilters(false)
   }
 
-  const handleFiltersToggle = () => {
-    if (!showFilters) {
-      setTempPriceFilter(priceFilter)
-      setTempMaxPrice(maxPrice)
-    }
-    setShowFilters(!showFilters)
+  // Componente de Select Custom
+  const CustomSelect = ({ 
+    value, 
+    onChange, 
+    options, 
+    label,
+    getLabel,
+    isMobile = false
+  }: { 
+    value: string
+    onChange: (value: string) => void
+    options: { value: string; label: string }[]
+    label: string
+    getLabel: (value: string) => string
+    isMobile?: boolean
+  }) => {
+    const [isOpen, setIsOpen] = useState(false)
+
+    return (
+      <div className="relative">
+        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+          {label}
+        </label>
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-left focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all hover:border-gray-400 flex items-center justify-between"
+        >
+          <span className="truncate">{getLabel(value)}</span>
+          <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform flex-shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {isOpen && (
+          <>
+            <div 
+              className={isMobile ? "fixed inset-0 z-[60]" : "fixed inset-0 z-10"}
+              onClick={() => setIsOpen(false)}
+            />
+            <div className={`${isMobile ? "fixed left-4 right-4 z-[70]" : "absolute z-20 w-full"} mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-auto`}>
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.value)
+                    setIsOpen(false)
+                  }}
+                  className={`w-full px-4 py-3 text-sm text-left hover:bg-gray-50 transition-colors flex items-center justify-between border-b border-gray-100 last:border-b-0 ${
+                    value === option.value ? 'bg-red-50 text-red-600 font-medium' : 'text-gray-700'
+                  }`}
+                >
+                  <span>{option.label}</span>
+                  {value === option.value && (
+                    <Check className="h-4 w-4 text-red-600 flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  const FilterContent = ({ isMobile = false }: { isMobile?: boolean }) => {
+    const currentCategory = isMobile ? tempCategory : selectedCategory
+    const currentPriceFilter = isMobile ? tempPriceFilter : priceFilter
+    
+    const categoryOptions = (categories?.length ? categories : ["all"]).map(c => ({
+      value: c,
+      label: c === "all" ? "Todas las categorías" : c
+    }))
+
+    return (
+      <>
+        {/* Categoría */}
+        <div className="flex-1 min-w-0">
+          <CustomSelect
+            value={currentCategory}
+            onChange={isMobile ? setTempCategory : onCategoryChange}
+            options={categoryOptions}
+            label="Categoría"
+            getLabel={getCategoryLabel}
+            isMobile={isMobile}
+          />
+        </div>
+
+        {/* Orden de precio */}
+        <div className="flex-1 min-w-0">
+          <CustomSelect
+            value={currentPriceFilter}
+            onChange={isMobile ? setTempPriceFilter : onPriceFilterChange}
+            options={priceOptions}
+            label="Ordenar por precio"
+            getLabel={getPriceLabel}
+            isMobile={isMobile}
+          />
+        </div>
+
+        {/* Botón limpiar (solo desktop) */}
+        {!isMobile && hasActiveFilters && (
+          <div className="flex items-end">
+            <Button
+              variant="outline"
+              onClick={clearFilter}
+              className="w-full md:w-auto h-[42px] border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Limpiar
+            </Button>
+          </div>
+        )}
+      </>
+    )
   }
 
   return (
-    <div className="mb-6 space-y-3">
-      {/* Search Bar - WhatsApp style */}
-      <div className="relative max-w-md mx-auto">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-        <Input
-          type="text"
-          placeholder="Buscar productos..."
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10 rounded-full border-gray-200 bg-gray-50 focus:bg-white transition-colors"
-        />
-      </div>
-
-      {/* Filter Controls - Compact WhatsApp style */}
-      <div className="flex items-center justify-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleCategoriesToggle}
-          className={`rounded-full border-gray-200 hover:bg-gray-50 ${selectedCategory !== "all" ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white text-gray-700"
-            }`}
-        >
-          <Filter className="h-4 w-4 mr-1" />
-          Categorías
-        </Button>
-
-        {/* Price Filter Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleFiltersToggle}
-          className={`rounded-full border-gray-200 hover:bg-gray-50 ${priceFilter !== "all" ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white text-gray-700"
-            }`}
-        >
-          <Filter className="h-4 w-4 mr-1" />
-          Precio
-        </Button>
-
-        {/* Clear Filters */}
-        {(selectedCategory !== "all" || priceFilter !== "all") && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              onCategoryChange("all")
-              onPriceFilterChange("all")
-              onMaxPriceChange(0)
-              setTempCategory("all")
-              setTempPriceFilter("all")
-              setTempMaxPrice(0)
-            }}
-            className="rounded-full text-gray-500 hover:text-gray-700"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      {showCategories && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm max-w-md mx-auto z-[9999] relative">
-          <div className="space-y-3">
-            <h3 className="font-medium text-gray-900 text-sm">Filtrar por categoría</h3>
-
-            {/* Category Options in 2 columns */}
-            <div className="grid grid-cols-2 gap-2">
-              {categories.map((category) => (
-                <label key={category} className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="categoryFilter"
-                    value={category}
-                    checked={tempCategory === category}
-                    onChange={(e) => setTempCategory(e.target.value)}
-                    className="text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className="text-sm text-gray-700 truncate">{category === "all" ? "Todos" : category}</span>
-                </label>
-              ))}
-            </div>
-
-            {/* Apply Button */}
-            <Button
-              onClick={applyCategoryFilters}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-sm"
-              size="sm"
-            >
-              Aplicar filtros
-            </Button>
-          </div>
+    <>
+      {/* Vista Desktop */}
+      <div className="hidden md:block bg-white/80 border border-gray-200 rounded-xl shadow-sm p-4">
+        <div className="flex items-end gap-4">
+          <FilterContent isMobile={false} />
         </div>
-      )}
+      </div>
 
-      {showFilters && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm max-w-md mx-auto z-[9999] relative">
-          <div className="space-y-3">
-            <h3 className="font-medium text-gray-900 text-sm">Filtrar por precio</h3>
+      {/* Vista Mobile - Botón flotante */}
+      <div className="md:hidden">
+        <Button
+          onClick={() => setShowMobileFilters(true)}
+          className="w-full bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 text-gray-900 h-12 relative"
+          variant="outline"
+        >
+          <SlidersHorizontal className="h-5 w-5 mr-2" />
+          <span className="font-medium">Filtros</span>
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </Button>
 
-            <div className="grid grid-cols-2 gap-2">
-              {priceOptions.map((option) => (
-                <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="priceFilter"
-                    value={option.value}
-                    checked={tempPriceFilter === option.value}
-                    onChange={(e) => setTempPriceFilter(e.target.value)}
-                    className="text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className="text-sm text-gray-700 truncate">{option.label}</span>
-                </label>
-              ))}
-            </div>
+        {/* Modal Mobile */}
+        {showMobileFilters && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 justify-center">
+            <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-2xl h-[60vh] flex flex-col animate-in slide-in-from-bottom duration-300 z-50">
+              {/* Header del modal */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="h-5 w-5 text-gray-700" />
+                  <h3 className="text-lg font-semibold text-gray-900">Filtros</h3>
+                  {activeFilterCount > 0 && (
+                    <span className="bg-red-600 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowMobileFilters(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
 
-            {/* Price Limit Input */}
-            {tempPriceFilter === "under-limit" && (
-              <div className="pt-2 border-t border-gray-100">
-                <label className="block text-sm text-gray-600 mb-1">Precio máximo</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
-                  <Input
-                    type="text"
-                    placeholder="0"
-                    value={formatPrice(tempMaxPrice) || ""}
-                    onChange={(e) => {
-                      const numericValue = e.target.value.replace(/\./g, '');
-                      setTempMaxPrice(e.target.value === "" ? 0 : !isNaN(Number(numericValue)) ? Number(numericValue) : tempMaxPrice);
-                    }}
-                    onBlur={(e) => {
-                      const numericValue = e.target.value.replace(/\./g, '');
-                      if (!isNaN(Number(numericValue))) {
-                        setTempMaxPrice(e.target.value === "" ? 0 : !isNaN(Number(numericValue)) ? Number(numericValue) : tempMaxPrice);
-                      }
-                    }}
-                    className="pl-8 text-sm"
-                    min="0"
-                  />
+              {/* Contenido del modal */}
+              <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                <FilterContent isMobile={true} />
+              </div>
+
+              <div className=""></div>
+              {/* Footer del modal */}
+              <div className="p-4 rounded-t-2xl">
+                <div className="flex gap-3">
+                  {(tempCategory !== "all" || tempPriceFilter !== "all") && (
+                    <Button
+                      variant="outline"
+                      onClick={handleClearFilters}
+                      className="flex-1 border-gray-300"
+                    >
+                      Limpiar todo
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleApplyFilters}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Aplicar filtros
+                  </Button>
                 </div>
               </div>
-            )}
-
-            {/* Apply Button */}
-            <Button
-              onClick={applyPriceFilters}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-sm"
-              size="sm"
-            >
-              Aplicar filtros
-            </Button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Click outside to close dropdowns */}
-      {(showCategories || showFilters) && (
-        <div
-          className="fixed inset-0 z-[9998]"
-          onClick={() => {
-            setShowCategories(false)
-            setShowFilters(false)
-          }}
-        />
-      )}
-    </div>
+        )}
+      </div>
+    </>
   )
 }

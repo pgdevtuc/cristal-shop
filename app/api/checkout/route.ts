@@ -3,7 +3,7 @@ import Carts from "@/lib/models/carts";
 import Token from "@/lib/models/token";
 import { decode } from "jsonwebtoken";
 import connectDB from "@/lib/database";
-
+import dolarReference from "@/lib/models/dolarReference";
 /* ------------------------------
    Helper: fecha en hora Argentina
 -------------------------------- */
@@ -84,6 +84,9 @@ export async function POST(req: Request) {
       token = newToken;
     }
 
+    const dolarRef = await dolarReference.findOne().lean();
+    const priceDolar = (dolarRef as any)?.price ?? 1
+
     /* ------------------------------
        2. Obtener datos del request
     -------------------------------- */
@@ -133,12 +136,13 @@ export async function POST(req: Request) {
       }
 
       const price = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-      totalAmount += price * qty;
+      const parsedPrice = price * priceDolar
+      totalAmount += parsedPrice * qty;
 
       cartItems.push({
         description: product.descripcion,
         quantity: qty,
-        unit_price: price,
+        unit_price: parsedPrice,
         image: product.image[0],
         sku: product._id,
         name: product.name,
@@ -205,17 +209,30 @@ export async function POST(req: Request) {
     /* ------------------------------
        7. Enviar respuesta al frontend
     -------------------------------- */
+    const callbackSuccess = encodeURIComponent(
+      'https://cristaltienda.waichatt.com/success'
+    );
+
+    const callbackFailed = encodeURIComponent(
+      'https://cristaltienda.waichatt.com/failed'
+    );
+
+    const deeplink = `https://www.modo.com.ar/pagar` +
+      `?qr=${modoData.qr}` +
+      `&callback=${callbackFailed}` +
+      `&callbackSuccess=${callbackSuccess}` +
+      `&paymentRequestId=${modoData.id}`;
+
+
     return Response.json({
       success: true,
       orderId: cart._id,
       checkout: {
         intentionId: modoData.id,
-        qr: modoData.qr,
-        deeplink: modoData.deeplink,
+        deeplink,
         amount: totalAmount,
       }
     });
-
 
   } catch (err) {
     console.error("Checkout error:", err);

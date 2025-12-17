@@ -8,6 +8,7 @@ export interface Product {
   image: string[]
   stock: number
   colors?: string[]
+  currency?: "ARS" | "USD"
 }
 
 export interface CartItem {

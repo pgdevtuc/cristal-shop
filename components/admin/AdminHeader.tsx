@@ -2,11 +2,11 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Home, Package, BarChart3 } from "lucide-react"
+import { Home, Package, BarChart3,DollarSign } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 export function AdminHeader() {
-  const pathname=usePathname();
+  const pathname = usePathname();
   return (
     <header className="bg-white shadow-sm border-b border-gray-100">
       <div className="container mx-auto px-4">
@@ -24,21 +24,27 @@ export function AdminHeader() {
 
           <nav className="flex items-center space-x-2">
             <Link href="/admin/orders">
-              <Button variant="ghost" size="sm" className={`hover:bg-red-50 hover:text-red-700 ${pathname==="/admin/orders"?"bg-red-50 text-red-700":""}`}>
+              <Button variant="ghost" size="sm" className={`hover:bg-red-50 hover:text-red-700 ${pathname === "/admin/orders" ? "bg-red-50 text-red-700" : ""}`}>
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Pedidos
               </Button>
             </Link>
             <Link href="/admin/products">
-              <Button variant="ghost" size="sm" className={`hover:bg-red-50 hover:text-red-700 ${pathname==="/admin/products"?"bg-red-50 text-red-700":""}`}>
+              <Button variant="ghost" size="sm" className={`hover:bg-red-50 hover:text-red-700 ${pathname === "/admin/products" ? "bg-red-50 text-red-700" : ""}`}>
                 <Package className="h-4 w-4 mr-2" />
                 Productos
               </Button>
             </Link>
             <Link href="/admin/category">
-              <Button variant="ghost" size="sm" className={`hover:bg-red-50 hover:text-red-700 ${pathname==="/admin/category"?"bg-red-50 text-red-700":""}`}>
+              <Button variant="ghost" size="sm" className={`hover:bg-red-50 hover:text-red-700 ${pathname === "/admin/category" ? "bg-red-50 text-red-700" : ""}`}>
                 <Package className="h-4 w-4 mr-2" />
                 Categorias
+              </Button>
+            </Link>
+            <Link href="/admin/dolar">
+              <Button variant="ghost" size="sm" className={`hover:bg-red-50 hover:text-red-700 ${pathname === "/admin/dolar" ? "bg-red-50 text-red-700" : ""}`}>
+                <DollarSign className="h-4 w-4 mr-2" />
+                Dolar
               </Button>
             </Link>
             <Link href="/">

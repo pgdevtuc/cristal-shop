@@ -173,7 +173,7 @@ export default function AdminCategoriesPage() {
                       <Input
                         placeholder="https://ejemplo.com/imagen.jpg"
                         value={image}
-                        type="url"
+                        type="text"
                         onChange={(e) => setImage(e.target.value)}
                         className="h-12 text-base"
                       />

@@ -53,7 +53,7 @@ export function ProductList({ products, loading, onEdit, onDelete }: ProductList
           <Card key={product.id} className="overflow-hidden">
             <div className="relative">
               <Image
-                src={Array.isArray(product.image) ? product.image[0] : product.image || "/placeholder.svg"}
+                src={Array.isArray(product.image) ? product.image[0] ?? "/placeholder.svg" : product.image ?? "/placeholder.svg"}
                 alt={product.name}
                 width={300}
                 height={200}
@@ -75,9 +75,12 @@ export function ProductList({ products, loading, onEdit, onDelete }: ProductList
             </div>
 
             <CardContent className="p-4">
-              <div className="mb-2">
+              <div className="mb-2 flex items-center gap-2">
                 <Badge variant="secondary" className="text-xs">
                   {product.category}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {(product as any)?.currency ?? "ARS"}
                 </Badge>
               </div>
 

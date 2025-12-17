@@ -94,7 +94,7 @@ export function CategoryCarousel({
                 min-w-[280px] md:min-w-[320px] lg:min-w-[380px]
                 h-48 md:h-56 lg:h-64
                 ${
-                  selectedCategory === cat.name
+                  selectedCategory.toUpperCase() === cat.name.toLocaleLowerCase()
                     ? "ring-4 ring-red-600 ring-offset-2 scale-[1.02]"
                     : "hover:ring-2 hover:ring-red-400 hover:ring-offset-1"
                 }

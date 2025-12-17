@@ -10,6 +10,7 @@ export interface IProduct extends Document {
   description: string
   price: number
   salePrice: number
+  currency: "ARS" | "USD"
   createdAt: Date
   updatedAt: Date
 }
@@ -35,23 +36,22 @@ const ProductSchema = new Schema<IProduct>(
     },
     stock: {
       type: Number,
-      required: true,
       min: 0,
       default: 0,
     },
     category: {
       type: String,
-      required: true,
+      default:"",
       trim: true,
     },
     description: {
       type: String,
-      required: true,
+      default:"",
       trim: true,
     },
     price: {
       type: Number,
-      required: true,
+      default:0,
       min: 0,
     },
     salePrice: {
@@ -59,6 +59,10 @@ const ProductSchema = new Schema<IProduct>(
       default: 0,
       min: 0,
     },
+    currency:{
+      type:String,
+      default: "ARS"
+    }
   },
   {
     timestamps: true,
