@@ -72,15 +72,19 @@ export async function GET(req: Request) {
 
     // normalize image (now stored as array) and include colors if present
     const dolarPrice = Number((dolar as any)?.price) || 1
+
     const items = rawItems.map((p: any) => {
-      const isUSD = p.currency === "USD"
-      const price = isUSD ? p.price * dolarPrice : p.price
-      const salePrice = p.salePrice && p.salePrice > 0 ? (isUSD ? p.salePrice * dolarPrice : p.salePrice) : null
+      const isUSD = p.currency == "USD"
+      const price = isUSD
+        ? Math.round((p.price * dolarPrice + Number.EPSILON) * 100) / 100
+        : p.price
+
+      const salePrice = p.salePrice && p.salePrice > 0 ? (isUSD ? Math.round((p.salePrice * dolarPrice + Number.EPSILON) * 100) / 100 : p.salePrice) : null
       return {
         ...p,
         id: p._id.toString(),
-        price,
-        salePrice,
+        price: price,
+        salePrice: salePrice ? parseInt(String(Math.round(salePrice))) : null,
         currency: p.currency || "ARS",
       }
     })
@@ -144,6 +148,7 @@ export async function POST(request: Request) {
       price: Number(product.price),
       currency: product.currency === "USD" ? "USD" : "ARS",
     })
+
 
     const savedProduct = await newProduct.save()
 

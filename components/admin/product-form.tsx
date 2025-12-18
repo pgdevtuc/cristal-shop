@@ -53,29 +53,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
 
   const [loading, setLoading] = useState(false)
 
-  // If editing a USD product, convert displayed price fields back to USD using current reference
-  useEffect(() => {
-    const prod: any = product
-    if (!prod || prod.currency !== "USD") return
-    let active = true
-    fetch("/api/dolar")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!active) return
-        const ref = Number(data?.reference?.price) || 0
-        if (ref > 0) {
-          const priceUSD = Number(prod.price) / ref
-          const saleUSD = prod.salePrice ? Number(prod.salePrice) / ref : 0
-          setFormData((prev: any) => ({
-            ...prev,
-            price: Math.round(priceUSD).toString(),
-            salePrice: saleUSD ? Math.round(saleUSD).toString() : "",
-          }))
-        }
-      })
-      .catch(() => {/* ignore */})
-    return () => { active = false }
-  }, [product])
+
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,7 +61,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
     if (formData.images.length < 1) return toast.error("El producto debe contener al menos 1 imagen", { position: "top-center", style: { color: "red" }, duration: 3000 })
     if (formData.colors && formData.colors.length > 0 && formData.colors.map((s: any) => String(s || "").trim()).filter(Boolean).length < 1) return toast.error("Rellena los colores", { position: "top-center", style: { color: "red" }, duration: 3000 })
     if (formData.features && formData.features.length > 0 && formData.features.map((s: any) => String(s || "").trim()).filter(Boolean).length < 1) return toast.error("Rellena las características", { position: "top-center", style: { color: "red" }, duration: 3000 })
-      setLoading(true)
+    setLoading(true)
 
     try {
       // sanitize arrays: only non-empty trimmed strings
@@ -155,7 +133,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                   className="bg-white w-full border rounded-md px-2 py-2.5 "
                 >
                   <option value="">Seleccionar categoría</option>
-                  {categories?.length > 0  && categories.map((c) => (
+                  {categories?.length > 0 && categories.map((c) => (
                     <option key={c.id} value={c.name}>
                       {c.name}
                     </option>
@@ -181,18 +159,21 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                 <Input
                   id="price"
                   type="text"
-                  value={formatPrice(formData.price)}
+                  value={formData.price}
                   onChange={(e) => {
-                    const numericValue = e.target.value.replace(/\./g, '');
-                    setFormData({ ...formData, price: numericValue });
-                  }}
-                  onBlur={(e) => {
-                    const numericValue = e.target.value.replace(/\./g, '');
-                    if (!isNaN(Number(numericValue))) {
-                      setFormData({ ...formData, price: numericValue });
+                    // Permitir solo números, puntos y comas
+                    let value = e.target.value.replace(/[^\d.,]/g, '');
+                    // Reemplazar coma por punto (decimal)
+                    value = value.replace(',', '.');
+                    // Remover los puntos de miles (formato) pero mantener el punto decimal
+                    const parts = value.split('.');
+                    if (parts.length > 2) {
+                      // Si hay múltiples puntos, solo mantener el último como decimal
+                      value = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
                     }
+                    setFormData({ ...formData, price: value });
                   }}
-                  placeholder="10.000"
+                  placeholder="12000"
                   required
                 />
               </div>
@@ -201,18 +182,21 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                 <Input
                   id="salePrice"
                   type="text"
-                  step="0.01"
-                  value={formatPrice(formData.salePrice)}
+                  value={formData.salePrice}
                   onChange={(e) => {
-                    const numericValue = e.target.value.replace(/\./g, '');
-                    setFormData({ ...formData, salePrice: numericValue });
-                  }}
-                  onBlur={(e) => {
-                    const numericValue = e.target.value.replace(/\./g, '');
-                    if (!isNaN(Number(numericValue))) {
-                      setFormData({ ...formData, salePrice: numericValue });
+                    // Permitir solo números, puntos y comas
+                    let value = e.target.value.replace(/[^\d.,]/g, '');
+                    // Reemplazar coma por punto (decimal)
+                    value = value.replace(',', '.');
+                    // Remover los puntos de miles (formato) pero mantener el punto decimal
+                    const parts = value.split('.');
+                    if (parts.length > 2) {
+                      // Si hay múltiples puntos, solo mantener el último como decimal
+                      value = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
                     }
+                    setFormData({ ...formData, salePrice: value });
                   }}
+                  placeholder="10000"
                 />
               </div>
               <div>

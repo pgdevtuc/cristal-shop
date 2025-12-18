@@ -11,8 +11,8 @@ export default async function HomePage() {
 
   try {
     const [resItems, resCatObjects] = await Promise.all([
-      fetch(`${url}/api/products`, { next: { revalidate: 60 } }),
-      fetch(`${url}/api/categories`, { next: { revalidate: 60 } })
+      fetch(`${url}/api/products`, { next: { revalidate: 30 } }),
+      fetch(`${url}/api/categories`, { next: { revalidate: 30 } })
     ]);
     if (resItems.ok && resCatObjects.ok) {
       const dataItems = await resItems.json();

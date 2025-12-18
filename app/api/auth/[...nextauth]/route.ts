@@ -21,7 +21,7 @@ export const authOptions: NextAuthOptions = {
          const now = new Date();
         if (!user || (user.lockedUntil && user.lockedUntil > now)) return null;
 
-        const ok = await bcrypt.compare((credentials.password || "") + (process.env.PASSWORD_PEPPER ?? ""), user.passwordHash);
+        const ok = await bcrypt.compare(credentials.password, user.passwordHash);
         
          if (!ok) {
           const failed = (user?.failedLogins ?? 0) + 1;

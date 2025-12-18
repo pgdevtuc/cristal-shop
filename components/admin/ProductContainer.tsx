@@ -53,7 +53,7 @@ export function ProductsContainer({
   async function fetchPage(p = page, query = debouncedQuery) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/products?page=${p}&limit=${limit}&q=${encodeURIComponent(query)}&filter=${encodeURIComponent(stockFilter)}`);
+      const res = await fetch(`/api/products/admin?page=${p}&limit=${limit}&q=${encodeURIComponent(query)}&filter=${encodeURIComponent(stockFilter)}`);
       const data = await res.json();
 
       setItems(data.items || []);

@@ -24,17 +24,21 @@ import { getDolar } from "@/lib/dolar"
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session || (session.user as any).role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     const blue = await getDolar()
     await connectDB()
     const ref: any = await DolarReference.findOne({}).sort({ updatedAt: -1 }).lean().exec()
 
     const reference = ref
       ? {
-          id: String(ref._id),
-          price: ref.price,
-          createdAt: ref.createdAt,
-          updatedAt: ref.updatedAt,
-        }
+        id: String(ref._id),
+        price: ref.price,
+        createdAt: ref.createdAt,
+        updatedAt: ref.updatedAt,
+      }
       : null
 
     return NextResponse.json({ blue, reference })

@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     }
 
     const dolarRef = await dolarReference.findOne().lean();
-    const priceDolar = (dolarRef as any)?.price ?? 1
+    const dolarPrice = (dolarRef as any)?.price ?? 1
 
     /* ------------------------------
        2. Obtener datos del request
@@ -136,7 +136,7 @@ export async function POST(req: Request) {
       }
 
       const price = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-      const parsedPrice = price * priceDolar
+      const parsedPrice = product.currency == "ARS" ? price : Math.round((price * dolarPrice + Number.EPSILON) * 100) / 100
       totalAmount += parsedPrice * qty;
 
       cartItems.push({
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
       description: `Pedido a Cristal Shop`,
       amount: totalAmount,
       currency: "ARS",
-      cc_code: "13CSI",
+      cc_code: "6CCI",
       processor_code: process.env.MODO_CLIENT_PROCESOR_CODE ?? "",
       external_intention_id: cart._id.toString(),
       items: cartItems

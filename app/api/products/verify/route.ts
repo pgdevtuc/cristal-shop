@@ -11,14 +11,13 @@ export async function GET(req: Request) {
     try {
         await connectDB();
         const findProduct = await product.findById(id)
-        
         if (findProduct) {
             const dolar = await dolarReference.findOne({}).lean()
             const dolarPrice = Number((dolar as any)?.price) || 1
             const doc: any = (findProduct as any)._doc || findProduct
             const isUSD = doc.currency === "USD"
-            const price = isUSD ? doc.price * dolarPrice : doc.price
-            const salePrice = doc.salePrice && doc.salePrice > 0 ? (isUSD ? doc.salePrice * dolarPrice : doc.salePrice) : null
+            const price = isUSD ? Math.round((doc.price * dolarPrice + Number.EPSILON) * 100) / 100: doc.price
+            const salePrice = doc.salePrice && doc.salePrice > 0 ? (isUSD ? Math.round((doc.salePrice * dolarPrice + Number.EPSILON) * 100) / 100: doc.salePrice) : null
             const images = Array.isArray(doc.image) ? doc.image : (doc.image ? [doc.image] : [])
             return NextResponse.json({ product: { ...doc, image: images, id: findProduct._id.toString(), price, salePrice, currency: doc.currency || "ARS" } }, { status: 200 })
         }
