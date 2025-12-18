@@ -37,9 +37,10 @@ export async function GET(req: NextRequest) {
       baseMatch.$or = [
         { customerPhone: { $regex: phone, $options: "i" } },
         { customerName: { $regex: phone, $options: "i" } },
+        { customerEmail: { $regex: phone, $options: "i" } }
       ];
     }
-    if (status && status !== "Todos") baseMatch.status = status;
+    if (status && status !== "Todos") baseMatch.status = status.toUpperCase();
     if (shipping === "true") baseMatch.shipping = true;
     if (shipping === "false") baseMatch.shipping = false;
 

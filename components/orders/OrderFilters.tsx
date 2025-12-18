@@ -99,7 +99,7 @@ export default function OrderFilters({
             Filtrar por teléfono o nombre
           </label>
           <Input
-            placeholder="Teléfono o nombre..."
+            placeholder="Teléfono, nombre o email..."
             value={phoneFilter}
             onChange={(e) => setPhoneFilter(e.target.value)}
             className="w-full"

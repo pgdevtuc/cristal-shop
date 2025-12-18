@@ -39,7 +39,7 @@ export async function GET(req: Request) {
         } else if (stockFilter === "outOfStock") {
             filter.stock = 0
         } else if (stockFilter === "discounted") {
-            filter.salePrice = { $ne: 0 }
+            filter.salePrice = { $ne: null, $gt: 0 }
             filter.$expr = { $lt: ["$salePrice", "$price"] }
         } else if (stockFilter === "lowStock") {
             filter.stock = { $gte: 1, $lt: 3 }
@@ -74,7 +74,10 @@ export async function GET(req: Request) {
         const [inStock, outOfStock, discounted] = await Promise.all([
             Product.countDocuments({ stock: { $gt: 0 } }),
             Product.countDocuments({ stock: 0 }),
-            Product.countDocuments({ salePrice: { $ne: 0 }, $expr: { $lt: ["$salePrice", "$price"] } }),
+            Product.countDocuments({
+                salePrice: { $ne: null, $gt: 0 },
+                $expr: { $lt: ["$salePrice", "$price"] }
+            })
         ])
 
         return NextResponse.json({
