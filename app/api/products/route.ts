@@ -1,26 +1,137 @@
 import { NextResponse } from "next/server"
+import { randomUUID } from "crypto"
+import { PutObjectCommand } from "@aws-sdk/client-s3"
+
 import connectDB from "@/lib/database"
 import Product from "@/lib/models/product"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import dolarReference from "@/lib/models/dolarReference"
 import { rateLimit } from "@/lib/rate-limits"
+import { s3, BUCKET } from "@/lib/s3"
+
+const PUBLIC_ENDPOINT = process.env.MINIO_PUBLIC_ENDPOINT || process.env.MINIO_ENDPOINT || ""
+
+const buildPublicUrl = (key: string) => {
+  const base = PUBLIC_ENDPOINT.replace(/\/$/, "")
+  if (!base) {
+    return `/${BUCKET}/${key}`
+  }
+  return `${base}/${BUCKET}/${key}`
+}
+
+const isFile = (value: unknown): value is File => value instanceof File
+
+const normalizeNumber = (value: string | null | undefined, fallback = 0) => {
+  if (!value) return fallback
+  const normalized = value.replace(/,/g, ".").trim()
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const uploadImageFiles = async (files: File[]) => {
+  const urls: string[] = []
+  for (const file of files) {
+    if (!file || !file.size) continue
+
+    const arrayBuffer = await file.arrayBuffer()
+    const body = Buffer.from(arrayBuffer)
+    const extension = file.name?.split?.(".").pop?.()
+    const key = `products/${new Date().toISOString().split("T")[0]}/${randomUUID()}${extension ? `.${extension}` : ""}`
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: key,
+        Body: body,
+        ContentType: file.type || "application/octet-stream",
+        ACL: "public-read",
+      })
+    )
+
+    urls.push(buildPublicUrl(key))
+  }
+  return urls
+}
+
+const parseProductFormData = async (formData: FormData) => {
+  const name = String(formData.get("name") ?? "").trim()
+  const kibooId = String(formData.get("kibooId") ?? "").trim()
+  const description = String(formData.get("description") ?? "").trim()
+  const category = String(formData.get("category") ?? "").trim()
+  const currency = String(formData.get("currency") ?? "ARS").trim()
+
+  const manualImages = formData
+    .getAll("manualImages")
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+
+  const colors = formData
+    .getAll("colors")
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+
+  const features = formData
+    .getAll("features")
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+
+  const imageFiles = formData.getAll("imageFiles").filter(isFile)
+  const uploadedUrls = await uploadImageFiles(imageFiles)
+
+  const price = normalizeNumber(String(formData.get("price") ?? ""))
+  const salePriceRaw = String(formData.get("salePrice") ?? "").trim()
+  const salePrice = salePriceRaw ? normalizeNumber(salePriceRaw, 0) : 0
+  const stock = normalizeNumber(String(formData.get("stock") ?? ""), 0)
+
+  const image = [...manualImages, ...uploadedUrls].filter(Boolean)
+
+  return {
+    name,
+    description,
+    category,
+    currency,
+    price,
+    salePrice,
+    stock,
+    colors,
+    features,
+    image,
+    kibooId
+  }
+}
+
+const validateProductPayload = (payload: {
+  name: string
+  description: string
+  category: string
+  price: number
+  stock: number
+  image: string[]
+}) => {
+  if (!payload.name) return "El nombre es requerido"
+  if (!payload.description) return "La descripción es requerida"
+  if (!payload.category) return "La categoría es requerida"
+  if (!Number.isFinite(payload.price) || payload.price < 0) return "El precio es inválido"
+  if (!Number.isFinite(payload.stock) || payload.stock < 0) return "El stock es inválido"
+  if (!Array.isArray(payload.image) || payload.image.length === 0) return "Debe incluir al menos una imagen"
+  return null
+}
 
 export async function GET(req: Request) {
   try {
-
     const ip = getClientIp(req)
 
     if (rateLimit(ip)) {
       return Response.json(
         { error: "Too many requests, slow down." },
         { status: 429 }
-      );
+      )
     }
 
     const { searchParams } = new URL(req.url)
     const page = Math.max(1, Number(searchParams.get("page") ?? 1))
-    const limit = 12//Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? 12)))
+    const limit = 12
     const rawQ = searchParams.get("q") ?? ""
     const q = decodeURIComponent(rawQ).trim()
     const category = (searchParams.get("category") ?? "").trim()
@@ -37,12 +148,10 @@ export async function GET(req: Request) {
       }
       : {}
 
-    if (category) filter.category = category.toUpperCase();
+    if (category) filter.category = category.toUpperCase()
 
     if (id) filter._id = { $ne: id }
 
-
-    // Stock/discount filters
     if (stockFilter === "inStock") {
       filter.stock = { $gt: 0 }
     } else if (stockFilter === "outOfStock") {
@@ -70,30 +179,51 @@ export async function GET(req: Request) {
       .limit(limit)
       .lean()
 
-    // normalize image (now stored as array) and include colors if present
     const dolarPrice = Number((dolar as any)?.price) || 1
 
-    const items = rawItems.map((p: any) => {
-      const isUSD = p.currency == "USD"
+    const items = rawItems.map(({ currency, updatedAt, createdAt, __v, kibooId, ...p }) => {
+      const isUSD = currency == "USD"
       const price = isUSD
         ? Math.round((p.price * dolarPrice + Number.EPSILON) * 100) / 100
         : p.price
 
-      const salePrice = p.salePrice && p.salePrice > 0 ? (isUSD ? Math.round((p.salePrice * dolarPrice + Number.EPSILON) * 100) / 100 : p.salePrice) : null
+      const salePrice =
+        p.salePrice && p.salePrice > 0
+          ? isUSD
+            ? Math.round((p.salePrice * dolarPrice + Number.EPSILON) * 100) / 100
+            : p.salePrice
+          : null
       return {
         ...p,
-        id: p._id.toString(),
+        id: p._id?.toString(),
         price: price,
         salePrice: salePrice ? parseInt(String(Math.round(salePrice))) : null,
-        currency: p.currency || "ARS",
       }
     })
 
-    const [inStock, outOfStock, discounted] = await Promise.all([
-      Product.countDocuments({ stock: { $gt: 0 } }),
-      Product.countDocuments({ stock: 0 }),
-      Product.countDocuments({ salePrice: { $ne: 0 }, $expr: { $lt: ["$salePrice", "$price"] } }),
-    ])
+    const rawproductsPromotion = await Product.find({
+      salePrice: { $ne: null, $gt: 0 },
+      $expr: { $lt: ["$salePrice", "$price"] },
+    }).lean();
+    const productsPromotion = rawproductsPromotion.map(({ currency, updatedAt, createdAt, __v, kibooId, ...p }) => {
+      const isUSD = currency == "USD"
+      const price = isUSD
+        ? Math.round((p.price * dolarPrice + Number.EPSILON) * 100) / 100
+        : p.price
+
+      const salePrice =
+        p.salePrice && p.salePrice > 0
+          ? isUSD
+            ? Math.round((p.salePrice * dolarPrice + Number.EPSILON) * 100) / 100
+            : p.salePrice
+          : null
+      return {
+        ...p,
+        id: p._id?.toString(),
+        price: price,
+        salePrice: salePrice ? parseInt(String(Math.round(salePrice))) : null,
+      }
+    })
 
     return NextResponse.json({
       items,
@@ -101,7 +231,7 @@ export async function GET(req: Request) {
       page,
       limit,
       totalPages: Math.max(1, Math.ceil(total / limit)),
-      summary: { inStock, outOfStock, discounted },
+      productsPromotion,
     })
   } catch {
     return NextResponse.json({ error: "Error al obtener productos" }, { status: 500 })
@@ -114,46 +244,30 @@ export async function POST(request: Request) {
     if (!session || (session.user as any).role !== "admin")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const product = await request.json()
-    if (
-      !product.name ||
-      !product.price?.toString() ||
-      Number(product.price) < 0 ||
-      !product.category ||
-      product.stock < 0 ||
-      !product.description
-    ) {
-      return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 })
-    }
+    const formData = await request.formData()
+    const payload = await parseProductFormData(formData)
 
-    // validate images array: must be an array with at least one non-empty URL
-    const imgs = Array.isArray(product.image) ? product.image.map((s: any) => String(s || "").trim()).filter(Boolean) : []
-    if (imgs.length === 0) {
-      return NextResponse.json({ error: "Debe incluir al menos una URL de imagen" }, { status: 400 })
+    const validationError = validateProductPayload(payload)
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 })
     }
 
     await connectDB()
 
-    const imgsToSave = imgs
-    const colorsToSave = Array.isArray(product.colors) ? product.colors.map((s: any) => String(s || "").trim()).filter(Boolean) : []
-    const featuresToSave = Array.isArray(product.features) ? product.features.map((s: any) => String(s || "").trim()).filter(Boolean) : []
-
     const newProduct = new Product({
-      ...product,
-      image: imgsToSave,
-      colors: colorsToSave,
-      features: featuresToSave,
-      stock: product.stock || 0,
-      salePrice: Number(product.salePrice) || 0,
-      price: Number(product.price),
-      currency: product.currency === "USD" ? "USD" : "ARS",
+      ...payload,
+      salePrice: Number.isFinite(payload.salePrice) ? payload.salePrice : 0,
+      price: Number(payload.price),
+      stock: Number(payload.stock) || 0,
+      category: payload.category.toUpperCase(),
+      currency: payload.currency === "USD" ? "USD" : "ARS",
     })
-
 
     const savedProduct = await newProduct.save()
 
     return NextResponse.json(savedProduct, { status: 201 })
   } catch (error) {
+    console.error("Error creating product", error)
     return NextResponse.json({ error: "Error al crear producto" }, { status: 500 })
   }
 }
@@ -164,41 +278,35 @@ export async function PUT(request: Request) {
     if (!session || (session.user as any).role !== "admin")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const product = await request.json()
-    const { id, ...updateData } = product
+    const formData = await request.formData()
+    const id = String(formData.get("id") ?? "").trim()
 
-    if (!id) return NextResponse.json({ error: "No se encontro el ID de el producto" }, { status: 404 })
+    if (!id) {
+      return NextResponse.json({ error: "No se encontró el ID del producto" }, { status: 400 })
+    }
+
+    const payload = await parseProductFormData(formData)
+
+    const validationError = validateProductPayload(payload)
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 })
+    }
 
     await connectDB()
 
-    // Normalize image/colors fields if provided in update
-    if (updateData.image) {
-      updateData.image = Array.isArray(updateData.image)
-        ? updateData.image.map((s: any) => String(s || "").trim()).filter(Boolean)
-        : updateData.image
-          ? [String(updateData.image).trim()]
-          : []
-    }
-    if (updateData.colors) {
-      updateData.colors = Array.isArray(updateData.colors)
-        ? updateData.colors.map((s: any) => String(s || "").trim()).filter(Boolean)
-        : updateData.colors
-          ? [String(updateData.colors).trim()]
-          : []
-    }
-    if (updateData.features) {
-      updateData.features = Array.isArray(updateData.features)
-        ? updateData.features.map((s: any) => String(s || "").trim()).filter(Boolean)
-        : updateData.features
-          ? [String(updateData.features).trim()]
-          : []
+    const updateData: Record<string, any> = {
+      ...payload,
+      salePrice: Number.isFinite(payload.salePrice) ? payload.salePrice : 0,
+      price: Number(payload.price),
+      stock: Number(payload.stock) || 0,
+      category: payload.category.toUpperCase(),
+      currency: payload.currency === "USD" ? "USD" : "ARS",
     }
 
-    if (updateData.currency) {
-      updateData.currency = updateData.currency === "USD" ? "USD" : "ARS"
-    }
-
-    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
+    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    })
 
     if (!updatedProduct) {
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
@@ -206,6 +314,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(updatedProduct, { status: 200 })
   } catch (error) {
+    console.error("Error updating product", error)
     return NextResponse.json({ error: "Error al actualizar producto" }, { status: 500 })
   }
 }
@@ -237,16 +346,15 @@ export async function DELETE(request: Request) {
   }
 }
 
-
 function getClientIp(req: Request): string {
-  const headers = req.headers;
+  const headers = req.headers
 
   return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() || // proxies comunes
-    headers.get("x-real-ip") ||                              // Nginx
-    headers.get("cf-connecting-ip") ||                       // Cloudflare
-    headers.get("x-vercel-forwarded-for") ||                 // Vercel
-    (req as any).ip ||                                       // Node.js / Next local
+    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    headers.get("x-real-ip") ||
+    headers.get("cf-connecting-ip") ||
+    headers.get("x-vercel-forwarded-for") ||
+    (req as any).ip ||
     "unknown"
-  );
+  )
 }

@@ -51,6 +51,8 @@ async function getModoToken() {
    POST - Crear Orden + Payment Intention
 -------------------------------- */
 export async function POST(req: Request) {
+
+  return Response.json({ error: "Seccion no habilitada" }, { status: 400 });
   try {
     await connectDB();
 

@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
         const filter: any = q
             ? {
-                $or: [{ name: { $regex: q, $options: "i" } }, { category: { $regex: q, $options: "i" } }],
+                $or: [{ name: { $regex: q, $options: "i" } }, { category: { $regex: q, $options: "i" } }, { kibooId: { $regex: q, $options: "i" } }],
             }
             : {}
 

@@ -2,16 +2,18 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X } from "lucide-react";
-import { toast } from "sonner";
-import { Product } from "@/types/product";
-import { formatPrice } from "@/lib/formatPrice";
+import { useEffect, useRef, useState } from "react"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { X } from "lucide-react"
+import { toast } from "sonner"
+import { Product } from "@/types/product"
+import { formatPrice } from "@/lib/formatPrice"
+import { cn } from "@/lib/utils"
 
 interface ProductFormProps {
   product?: Product | null
@@ -26,16 +28,22 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
     price: product?.price || "",
     salePrice: product?.salePrice || "",
     category: product?.category || "",
-    images: product?.image || [],
+    manualImages: product?.image || [],
     colors: (product as any)?.colors || [],
     features: (product as any)?.features || [],
     stock: product?.stock || "",
     currency: (product as any)?.currency || "ARS",
+    kibooId: (product as any)?.kibooId || "",
   })
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
+  const [loading, setLoading] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
   useEffect(() => {
-    // fetch categories for select
     let mounted = true
     fetch("/api/categories")
       .then((r) => r.json())
@@ -51,52 +59,115 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
     }
   }, [])
 
-  const [loading, setLoading] = useState(false)
+  const sanitizedManualImages = (formData.manualImages || []).map((value: string) => value.trim()).filter(Boolean)
+  const totalImagesCount = sanitizedManualImages.length + imageFiles.length
 
+  const handleFilesSelected = (files: File[]) => {
+    if (!files.length) return
 
+    const validImages = files.filter((file) => file.type.startsWith("image/"))
+    if (!validImages.length) {
+      toast.error("Solo se permiten archivos de imagen", {
+        position: "top-center",
+        style: { color: "red" },
+        duration: 3000,
+      })
+      return
+    }
 
+    setImageFiles((prev) => [...prev, ...validImages])
+    toast.success(`Se agregaron ${validImages.length} imagen(es) para subir`, {
+      position: "top-center",
+      style: { color: "green" },
+      duration: 3000,
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (formData.images.length < 1) return toast.error("El producto debe contener al menos 1 imagen", { position: "top-center", style: { color: "red" }, duration: 3000 })
-    if (formData.colors && formData.colors.length > 0 && formData.colors.map((s: any) => String(s || "").trim()).filter(Boolean).length < 1) return toast.error("Rellena los colores", { position: "top-center", style: { color: "red" }, duration: 3000 })
-    if (formData.features && formData.features.length > 0 && formData.features.map((s: any) => String(s || "").trim()).filter(Boolean).length < 1) return toast.error("Rellena las características", { position: "top-center", style: { color: "red" }, duration: 3000 })
+
+    if (totalImagesCount < 1) {
+      toast.error("El producto debe contener al menos 1 imagen", {
+        position: "top-center",
+        style: { color: "red" },
+        duration: 3000,
+      })
+      return
+    }
+
+    if (
+      formData.colors &&
+      formData.colors.length > 0 &&
+      formData.colors.map((s: any) => String(s || "").trim()).filter(Boolean).length < 1
+    ) {
+      toast.error("Rellena los colores", {
+        position: "top-center",
+        style: { color: "red" },
+        duration: 3000,
+      })
+      return
+    }
+
+    if (
+      formData.features &&
+      formData.features.length > 0 &&
+      formData.features.map((s: any) => String(s || "").trim()).filter(Boolean).length < 1
+    ) {
+      toast.error("Rellena las características", {
+        position: "top-center",
+        style: { color: "red" },
+        duration: 3000,
+      })
+      return
+    }
+
     setLoading(true)
 
     try {
-      // sanitize arrays: only non-empty trimmed strings
-      const images = Array.isArray(formData.images) ? formData.images.map((s: any) => String(s || "").trim()).filter(Boolean) : []
-      const colors = Array.isArray(formData.colors) ? formData.colors.map((s: any) => String(s || "").trim()).filter(Boolean) : []
-      const features = Array.isArray(formData.features) ? formData.features.map((s: any) => String(s || "").trim()).filter(Boolean) : []
+      const payload = new FormData()
+      payload.append("name", formData.name)
+      payload.append("description", formData.description)
+      payload.append("price", formData.price.toString())
+      payload.append("salePrice", formData.salePrice ? formData.salePrice.toString() : "")
+      payload.append("category", formData.category)
+      payload.append("stock", formData.stock.toString())
+      payload.append("currency", (formData as any).currency === "USD" ? "USD" : "ARS")
+      payload.append("kibooId", formData.kibooId)
 
-      const productData = {
-        ...formData,
-        image: images,
-        colors,
-        features,
-        salePrice: formData.salePrice ? Number(formData.salePrice.toString()) : null,
-        price: Number(formData.price.toString()),
-        stock: Number(formData.stock.toString()),
-        currency: (formData as any).currency === "USD" ? "USD" : "ARS",
+      sanitizedManualImages.forEach((url) => payload.append("manualImages", url))
+      formData.colors.forEach((color: string) => payload.append("colors", color))
+      formData.features.forEach((feature: string) => payload.append("features", feature))
+      imageFiles.forEach((file) => payload.append("imageFiles", file))
+
+      if (product?.id) {
+        payload.append("id", product.id)
       }
 
       const response = await fetch("/api/products", {
         method: product ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(
-          product ? { ...productData, id: product.id } : productData
-        ),
+        body: payload,
       })
 
-      if (response.ok) {
-        toast.success(product ? "Producto actualizado" : "Producto creado", { position: "top-center", style: { color: "green" }, duration: 3000 })
-        onSave()
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.error || "Error al guardar el producto")
       }
+
+      toast.success(product ? "Producto actualizado" : "Producto creado", {
+        position: "top-center",
+        style: { color: "green" },
+        duration: 3000,
+      })
+
+      setImageFiles([])
+      onSave()
     } catch (error) {
       console.error("Error saving product:", error)
-      toast.error("Error al guardar el producto", { position: "top-center", style: { color: "red" }, duration: 3000 })
+      toast.error("Error al guardar el producto", {
+        position: "top-center",
+        style: { color: "red" },
+        duration: 3000,
+      })
     } finally {
       setLoading(false)
     }
@@ -143,6 +214,16 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
             </div>
 
             <div>
+              <Label htmlFor="kibooId">ID Kiboo</Label>
+              <Input
+                id="kibooId"
+                value={formData.kibooId}
+                onChange={(e) => setFormData({ ...formData, kibooId: e.target.value })}
+                placeholder="Ingresá el ID de Kiboo"
+              />
+            </div>
+
+            <div>
               <Label htmlFor="description">Descripción *</Label>
               <Textarea
                 id="description"
@@ -161,17 +242,13 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                   type="text"
                   value={formData.price}
                   onChange={(e) => {
-                    // Permitir solo números, puntos y comas
-                    let value = e.target.value.replace(/[^\d.,]/g, '');
-                    // Reemplazar coma por punto (decimal)
-                    value = value.replace(',', '.');
-                    // Remover los puntos de miles (formato) pero mantener el punto decimal
-                    const parts = value.split('.');
+                    let value = e.target.value.replace(/[^\d.,]/g, "")
+                    value = value.replace(",", ".")
+                    const parts = value.split(".")
                     if (parts.length > 2) {
-                      // Si hay múltiples puntos, solo mantener el último como decimal
-                      value = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
+                      value = parts.slice(0, -1).join("") + "." + parts[parts.length - 1]
                     }
-                    setFormData({ ...formData, price: value });
+                    setFormData({ ...formData, price: value })
                   }}
                   placeholder="12000"
                   required
@@ -184,17 +261,13 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                   type="text"
                   value={formData.salePrice}
                   onChange={(e) => {
-                    // Permitir solo números, puntos y comas
-                    let value = e.target.value.replace(/[^\d.,]/g, '');
-                    // Reemplazar coma por punto (decimal)
-                    value = value.replace(',', '.');
-                    // Remover los puntos de miles (formato) pero mantener el punto decimal
-                    const parts = value.split('.');
+                    let value = e.target.value.replace(/[^\d.,]/g, "")
+                    value = value.replace(",", ".")
+                    const parts = value.split(".")
                     if (parts.length > 2) {
-                      // Si hay múltiples puntos, solo mantener el último como decimal
-                      value = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
+                      value = parts.slice(0, -1).join("") + "." + parts[parts.length - 1]
                     }
-                    setFormData({ ...formData, salePrice: value });
+                    setFormData({ ...formData, salePrice: value })
                   }}
                   placeholder="10000"
                 />
@@ -207,13 +280,13 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
                   step="0.01"
                   value={formatPrice(formData.stock)}
                   onChange={(e) => {
-                    const numericValue = e.target.value.replace(/\./g, '');
-                    setFormData({ ...formData, stock: numericValue });
+                    const numericValue = e.target.value.replace(/\./g, "")
+                    setFormData({ ...formData, stock: numericValue })
                   }}
                   onBlur={(e) => {
-                    const numericValue = e.target.value.replace(/\./g, '');
+                    const numericValue = e.target.value.replace(/\./g, "")
                     if (!isNaN(Number(numericValue))) {
-                      setFormData({ ...formData, stock: numericValue });
+                      setFormData({ ...formData, stock: numericValue })
                     }
                   }}
                   required
@@ -235,44 +308,109 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
 
             <div>
               <Label>Imágenes *</Label>
-              <div className="space-y-2">
-                {(formData.images || []).map((img: string, idx: number) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <Input
-                      type="url"
-                      value={img}
-                      onChange={(e) => {
-                        const next = [...(formData.images || [])]
-                        next[idx] = e.target.value
-                        setFormData({ ...formData, images: next })
-                      }}
-                      placeholder="https://ejemplo.com/imagen.jpg"
-                      required
-                    />
+              <div
+                className={cn(
+                  "border border-dashed border-gray-300 rounded-md p-4 space-y-3 transition-colors",
+                  dragging && "border-primary bg-primary/5"
+                )}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  setDragging(true)
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  setDragging(false)
+                  const files = Array.from(event.dataTransfer.files || [])
+                  if (files.length) {
+                    handleFilesSelected(files)
+                  }
+                }}
+              >
+                <div className="space-y-2">
+                  {(formData.manualImages || []).map((img: string, idx: number) => (
+                    <div key={`manual-${idx}`} className="flex items-center gap-2">
+                      <Input
+                        type="url"
+                        value={img}
+                        onChange={(e) => {
+                          const next = [...(formData.manualImages || [])]
+                          next[idx] = e.target.value
+                          setFormData({ ...formData, manualImages: next })
+                        }}
+                        placeholder="https://ejemplo.com/imagen.jpg"
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          const next = [...(formData.manualImages || [])]
+                          next.splice(idx, 1)
+                          setFormData({ ...formData, manualImages: next })
+                        }}
+                      >
+                        Eliminar
+                      </Button>
+                    </div>
+                  ))}
+
+                  <div>
                     <Button
                       type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        const next = [...(formData.images || [])]
-                        next.splice(idx, 1)
-                        setFormData({ ...formData, images: next })
-                      }}
+                      variant="outline"
+                      onClick={() => setFormData({ ...formData, manualImages: [...(formData.manualImages || []), ""] })}
                     >
-                      Eliminar
+                      Agregar URL manualmente
                     </Button>
                   </div>
-                ))}
-
-                <div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setFormData({ ...formData, images: [...(formData.images || []), ""] })}
-                  >
-                    Agregar imagen
-                  </Button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Agregá una o más URLs de imágenes (no vacías).</p>
+
+                {imageFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Archivos listos para subir</p>
+                    <div className="space-y-1">
+                      {imageFiles.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                          <span className="truncate pr-2">{file.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="text-xs"
+                            onClick={() => setImageFiles((prev) => prev.filter((_, fileIdx) => fileIdx !== idx))}
+                          >
+                            Quitar
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                    Seleccionar archivos
+                  </Button>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    multiple
+                    onChange={(event) => {
+                      const files = event.target.files ? Array.from(event.target.files) : []
+                      if (files.length) {
+                        handleFilesSelected(files)
+                        event.target.value = ""
+                      }
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Podés arrastrar imágenes o seleccionarlas desde tu equipo. También podés agregar URLs manualmente.
+                  Las imágenes se subirán al guardar el producto.
+                </p>
               </div>
             </div>
 

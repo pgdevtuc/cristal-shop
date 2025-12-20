@@ -31,7 +31,7 @@ export function ProductList({ products, loading, onEdit, onDelete }: ProductList
       <Card>
         <CardContent className="text-center py-12">
           <p className="text-gray-600 mb-4">No hay productos registrados</p>
-          <p className="text-sm text-gray-500">Agrega tu primer producto o importa un archivo CSV/Excel</p>
+          <p className="text-sm text-gray-500">Agrega tu primer producto o importa un archivo CSV</p>
         </CardContent>
       </Card>
     )
@@ -40,7 +40,7 @@ export function ProductList({ products, loading, onEdit, onDelete }: ProductList
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {products.map((product,index) => {
+      {products.map((product, index) => {
 
         const hasDiscount = product.salePrice &&
           product.salePrice > 0 &&
@@ -81,6 +81,9 @@ export function ProductList({ products, loading, onEdit, onDelete }: ProductList
                 </Badge>
                 <Badge variant="outline" className="text-xs">
                   {(product as any)?.currency ?? "ARS"}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {product.kibooId ?? ""}
                 </Badge>
               </div>
 

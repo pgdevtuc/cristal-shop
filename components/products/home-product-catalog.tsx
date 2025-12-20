@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { WhatsAppProductCard } from "./whatsapp-product-card"
 import { WhatsAppProductCardSkeleton } from "./whatsapp-product-card-skeleton"
@@ -8,9 +8,17 @@ import { CategoryCarousel } from "./category-corousel"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import type { Product } from "@/types/product"
-import { ApiListResponse } from "@/types/IWhatsappProductCatalog"
+import { PromotionalSection } from "./promotional-section"
 
 export type CatObject = { id: string; name: string; image?: string }
+
+export type ApiListResponse = {
+    items: any[];
+    total: number;
+    page: number;
+    totalPages: number;
+    productsPromotion: Product[];
+};
 
 function mapServerProduct(doc: any): Product {
     return {
@@ -26,7 +34,6 @@ function mapServerProduct(doc: any): Product {
     }
 }
 
-
 interface HomeProductCatalogProps {
     dataInitial: ApiListResponse
     initialCatObjects: CatObject[]
@@ -34,6 +41,7 @@ interface HomeProductCatalogProps {
 
 export function HomeProductCatalog({ dataInitial, initialCatObjects }: HomeProductCatalogProps) {
     const router = useRouter()
+
     // Productos (sin filtros ni query params)
     const [products, setProducts] = useState<Product[]>(dataInitial.items)
     const [loading, setLoading] = useState(false)
@@ -41,13 +49,16 @@ export function HomeProductCatalog({ dataInitial, initialCatObjects }: HomeProdu
     const [initialLoading, setInitialLoading] = useState(dataInitial.items.length === 0)
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(dataInitial.totalPages)
-    
+
+    // Productos en promoción
+    const [promoProducts, setPromoProducts] = useState<Product[]>(
+        (dataInitial.productsPromotion ?? [])
+    )
 
     // Categorías para el carrusel (solo visual; clic lleva a /l)
     const [catObjects, setCatObjects] = useState<CatObject[]>(initialCatObjects)
 
     const abortRef = useRef<AbortController | null>(null)
-
 
     async function fetchPage(nextPage: number, replace = false) {
         abortRef.current?.abort()
@@ -70,9 +81,14 @@ export function HomeProductCatalog({ dataInitial, initialCatObjects }: HomeProdu
                 const data = raw as ApiListResponse
                 const mapped = (data.items ?? []).map(mapServerProduct)
                 if (replace) setProducts(mapped)
-                setProducts((prev) => [...prev, ...mapped])
+                else setProducts((prev) => [...prev, ...mapped])
                 setTotalPages(data.totalPages || 1)
                 setPage(nextPage)
+
+                // Actualizar productos en promoción si vienen en la respuesta
+                if (data.productsPromotion && data.productsPromotion.length > 0) {
+                    setPromoProducts(data.productsPromotion.map(mapServerProduct))
+                }
             }
         } catch (err: any) {
             if (err?.name !== "AbortError") console.error("Error fetching products:", err)
@@ -85,8 +101,14 @@ export function HomeProductCatalog({ dataInitial, initialCatObjects }: HomeProdu
 
     const hasMore = page < totalPages
 
+    const handleAddToCart = (product: Product) => {
+        console.log("Añadir al carrito:", product)
+        // Aquí iría la lógica para agregar al carrito
+    }
+
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen whatsapp-bg">
+            {/* Carrusel de categorías */}
             <div className="max-w-7xl mx-auto py-6">
                 <CategoryCarousel
                     categories={catObjects}
@@ -98,8 +120,10 @@ export function HomeProductCatalog({ dataInitial, initialCatObjects }: HomeProdu
                 />
             </div>
 
-            {/* Título de sección */}
-            <div className="max-w-7xl mx-auto px-4 py-4">
+            {/* Sección de productos en promoción */}
+            {promoProducts.length > 0 && <PromotionalSection products={promoProducts}/>}
+            {/* Título de sección - Más Vendidos */}
+            <div className="max-w-7xl mx-auto px-4 py-4 mt-8">
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Más Vendidos</h2>
             </div>
 

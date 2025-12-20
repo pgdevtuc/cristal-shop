@@ -86,7 +86,7 @@ async function fetchProducts(params: SearchParams): Promise<{
 
         const url = `${baseUrl}/api/products?${searchParams.toString()}`
         const response = await fetch(url, {
-            next: { revalidate: 60 }, // Cache por 60 segundos
+            next: { revalidate: 30 }, // Cache por 60 segundos
             headers: { "Content-Type": "application/json" }
         })
 

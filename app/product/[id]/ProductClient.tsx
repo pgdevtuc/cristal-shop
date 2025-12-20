@@ -97,7 +97,7 @@ export default function ProductClient({
   const savings = hasDiscount ? product.price - sale : 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen whatsapp-bg">
       <Suspense fallback={<div className="flex items-center justify-center p-4">
         <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-primary rounded-full" />
       </div>}>
@@ -112,7 +112,7 @@ export default function ProductClient({
               Inicio
             </Link>
             <ChevronRight className="h-4 w-4" />
-            <Link href={`/?category=${product.category}`} className="hover:text-red-600 transition-colors">
+            <Link href={`/l?category=${product.category}`} className="hover:text-red-600 transition-colors">
               {product.category}
             </Link>
             <ChevronRight className="h-4 w-4" />
@@ -403,7 +403,7 @@ export default function ProductClient({
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Productos Relacionados</h2>
               <Link
-                href={`/?category=${product.category}`}
+                href={`/l?category=${product.category}`}
                 className="text-red-600 hover:text-red-700 font-medium text-sm flex items-center gap-1"
               >
                 Ver más

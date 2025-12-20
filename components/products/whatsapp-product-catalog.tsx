@@ -299,7 +299,7 @@ export const WhatsAppProductCatalog: React.FC<WhatsAppProductCatalogProps> = ({
   const hasMore = page < totalPages
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen whatsapp-bg">
       {/* Filtros */}
       <div className="max-w-7xl mx-auto px-4 pt-6">
         <ProductFilters

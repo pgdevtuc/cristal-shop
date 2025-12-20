@@ -10,6 +10,7 @@ export interface IProduct {
     colors?: string[]
     features?: string[]
     currency?: "ARS" | "USD"
+    kibooId?: string | null
 }
 
 export interface Product {
@@ -24,4 +25,5 @@ export interface Product {
   colors?: string[]
   features?: string[]
   currency?: "ARS" | "USD"
+  kibooId?: string | null
 }

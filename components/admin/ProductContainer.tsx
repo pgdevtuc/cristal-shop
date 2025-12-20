@@ -6,10 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LayoutGrid, List } from "lucide-react";
 import { ProductList } from "./product-list";
+import { ProductTable } from "./product-table";
 import { Product } from "@/types/product";
 
 type Summary = { inStock: number; outOfStock: number; discounted: number };
+type ViewMode = "grid" | "table";
 
 function useDebounce<T>(value: T, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -45,6 +48,7 @@ export function ProductsContainer({
   const [limit] = useState(12);
   const [loading, setLoading] = useState(false);
   const [stockFilter, setStockFilter] = useState<string>(searchParams.get("filter") || "all");
+  const [viewMode, setViewMode] = useState<ViewMode>((searchParams.get("view") as ViewMode) || "table");
 
   const debouncedQuery = useDebounce(q, 1000);
 
@@ -54,12 +58,13 @@ export function ProductsContainer({
   const [summary, setSummary] = useState<Summary>({ inStock: 0, outOfStock: 0, discounted: 0 });
 
   // Función para actualizar la URL
-  const updateURL = (newPage: number, newQuery: string, newFilter: string) => {
+  const updateURL = (newPage: number, newQuery: string, newFilter: string, newView: ViewMode) => {
     const params = new URLSearchParams();
     
     if (newQuery) params.set("q", newQuery);
     if (newPage > 1) params.set("page", String(newPage));
     if (newFilter && newFilter !== "all") params.set("filter", newFilter);
+    if (newView !== "grid") params.set("view", newView);
 
     const newURL = params.toString() ? `?${params.toString()}` : window.location.pathname;
     router.push(newURL, { scroll: false });
@@ -91,8 +96,8 @@ export function ProductsContainer({
 
   // Actualizar URL cuando cambian los filtros
   useEffect(() => {
-    updateURL(page, debouncedQuery, stockFilter);
-  }, [page, debouncedQuery, stockFilter]);
+    updateURL(page, debouncedQuery, stockFilter, viewMode);
+  }, [page, debouncedQuery, stockFilter, viewMode]);
 
   // Fetch cuando cambian los parámetros
   useEffect(() => {
@@ -101,10 +106,10 @@ export function ProductsContainer({
 
   return (
     <div className="space-y-6">
-      {/* búsqueda + contador */}
+      {/* búsqueda + contador + toggle vista */}
       <div className="flex flex-wrap items-center gap-2">
         <Input
-          placeholder="Buscar por título/categoría…"
+          placeholder="Buscar por título, categoría o ID kiboo…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="max-w-sm"
@@ -128,7 +133,28 @@ export function ProductsContainer({
             {loading ? "Cargando…" : "Buscando…"}
           </span>
         )}
-        <div className="ml-auto text-sm text-muted-foreground">{total} productos</div>
+
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{total} productos</span>
+          <div className="flex border rounded-md">
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              className="rounded-r-none"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("table")}
+              className="rounded-l-none"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* stats */}
@@ -167,16 +193,28 @@ export function ProductsContainer({
         </Card>
       </div>
 
-      {/* grilla */}
-      <ProductList
-        loading={loading}
-        products={items}
-        onEdit={onEdit}
-        onDelete={async (id) => {
-          await onDelete(id);
-          setItems((prev) => prev.filter((p) => p.id !== id));
-        }}
-      />
+      {/* Vista de productos: grid o tabla */}
+      {viewMode === "grid" ? (
+        <ProductList
+          loading={loading}
+          products={items}
+          onEdit={onEdit}
+          onDelete={async (id) => {
+            await onDelete(id);
+            setItems((prev) => prev.filter((p) => p.id !== id));
+          }}
+        />
+      ) : (
+        <ProductTable
+          loading={loading}
+          products={items}
+          onEdit={onEdit}
+          onDelete={async (id) => {
+            await onDelete(id);
+            setItems((prev) => prev.filter((p) => p.id !== id));
+          }}
+        />
+      )}
 
       {/* paginación */}
       {totalPages > 1 && (

@@ -107,7 +107,7 @@ export default function CartPage() {
 
     if (totalItems === 0) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen whatsapp-bg">
                 <Suspense fallback={
                     <div className="flex items-center justify-center p-4">
                         <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-primary rounded-full"></div>
@@ -137,7 +137,7 @@ export default function CartPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen  whatsapp-bg">
             <ShopHeader />
             <div className="max-w-7xl mx-auto px-4 py-4">
                 <nav className="flex items-center gap-2 text-sm text-gray-500">
@@ -152,7 +152,7 @@ export default function CartPage() {
             <div className="max-w-7xl mx-auto px-4 pb-12">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">
                     Carrito de Compras
-                    <span className="text-gray-400 font-normal text-lg ml-2">({totalItems} productos)</span>
+                    <span className="text-gray-600 font-normal text-lg ml-2">({totalItems} productos)</span>
                 </h1>
 
                 <div className="grid lg:grid-cols-3 gap-8">

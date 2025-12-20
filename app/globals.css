@@ -37,6 +37,14 @@
   }
 }
 
+.whatsapp-bg {
+  background-color: var(--primary);
+  background-image: url("/images/bg.png");
+  background-size: 300px 300px;
+  background-repeat: repeat;
+  background-position: 0 0;
+  position: relative;
+}
 /* Overlay para ajustar la opacidad de la imagen de fondo */
 .whatsapp-bg::before {
   content: "";
@@ -45,16 +53,14 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ffffff;
-  opacity: 0.85;
+  background-color: rgb(255, 255, 255);
+  opacity: 0.93;
   pointer-events: none;
-  z-index: 0;
 }
 
 /* Asegurar que el contenido esté por encima del overlay */
 .whatsapp-bg > * {
   position: relative;
-  z-index: 1;
 }
 
 /* Estilos para el botón flotante centrado */

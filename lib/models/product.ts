@@ -11,6 +11,7 @@ export interface IProduct extends Document {
   price: number
   salePrice: number
   currency: "ARS" | "USD"
+  kibooId?:string
   createdAt: Date
   updatedAt: Date
 }
@@ -62,6 +63,10 @@ const ProductSchema = new Schema<IProduct>(
     currency:{
       type:String,
       default: "ARS"
+    },
+    kibooId:{
+      type:String,
+      
     }
   },
   {

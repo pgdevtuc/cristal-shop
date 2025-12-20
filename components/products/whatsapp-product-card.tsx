@@ -61,7 +61,7 @@ export function WhatsAppProductCard({ product }: WhatsAppProductCardProps) {
           <div className="flex items-center gap-2 mt-auto mb-3">
             {hasDiscount ? (
               <>
-                <span className="text-gray-400 line-through text-sm">${formatPrice(product.price)}</span>
+                <span className="text-gray-400 line-through text-xs">${formatPrice(product.price)}</span>
                 <span className="text-red-600 font-bold text-base md:text-lg">${formatPrice(product.salePrice!)}</span>
               </>
             ) : (

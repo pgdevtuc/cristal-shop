@@ -102,10 +102,10 @@ export function ProductFilters({
         {isOpen && (
           <>
             <div 
-              className={isMobile ? "fixed inset-0 z-[60]" : "fixed inset-0 z-10"}
+              className={isMobile ? "fixed inset-0 z-[60]" : "fixed inset-0 z-50"}
               onClick={() => setIsOpen(false)}
             />
-            <div className={`${isMobile ? "fixed left-4 right-4 z-[70]" : "absolute z-20 w-full"} mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-auto`}>
+            <div className={`${isMobile ? "fixed left-4 right-4 z-[70]" : "absolute z-50 w-full"} mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-auto`}>
               {options.map((option) => (
                 <button
                   key={option.value}

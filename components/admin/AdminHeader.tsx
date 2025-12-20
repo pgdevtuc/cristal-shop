@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Home, Package, BarChart3,DollarSign } from "lucide-react"
+import { Home, Package, BarChart3,DollarSign,LogOut } from "lucide-react"
 import { usePathname } from "next/navigation"
-
+import { signOut } from "next-auth/react"
 export function AdminHeader() {
   const pathname = usePathname();
   return (
@@ -53,6 +53,10 @@ export function AdminHeader() {
                 Ver Tienda
               </Button>
             </Link>
+            <Button onClick={()=>signOut({redirect:true,callbackUrl:"/login"})}>
+              <LogOut/>
+              Salir
+            </Button>
           </nav>
         </div>
       </div>
