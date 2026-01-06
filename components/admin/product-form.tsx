@@ -147,13 +147,14 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
         method: product ? "PUT" : "POST",
         body: payload,
       })
-
+      console.log(fetch)
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => null)
         throw new Error(errorData?.error || "Error al guardar el producto")
       }
       const data=await response.json();
+      console.log("data",data)
       await fetch(process.env.NEXT_PUBLIC_URL_WEBHOOK ?? "",{
         headers:{
           "content-type":"application/json"
