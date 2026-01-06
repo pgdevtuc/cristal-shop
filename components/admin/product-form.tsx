@@ -147,6 +147,17 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
         method: product ? "PUT" : "POST",
         body: payload,
       })
+      const data=await response.json();
+      await fetch(process.env.NEXT_PUBLIC_URL_WEBHOOK ?? "",{
+        headers:{
+          "content-type":"application/json"
+        },
+        method:"POST",
+        body:JSON.stringify({
+          action:product? "PUT":"POST",
+          id: product ? product.id : data?._id
+        })
+      })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null)

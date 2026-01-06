@@ -98,9 +98,9 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
 
   const downloadTemplate = () => {
     const csvContent =
-      "Nombre,Descripción,Precio,Categoría,URL de Imagen,Precio Oferta,Stock,Colores,Caracteristicas\n" +
-      "Smartphone Premium,Teléfono inteligente de última generación,85999,Electrónicos,https://imagen.com,749.99,15,Blanco;Gris,El mejor celular en 2025; La mejor camara\n" +
-      "Laptop Gaming,Laptop para gaming con procesador Intel i7,129999,Computadoras,https://imagen1.com,,8,Rojo,La mejor duración de bateria; Los mejores componentes"
+      "Nombre,Descripción,Precio,Categoría,URL de Imagen,Precio Oferta,Stock,Colores,Caracteristicas\n,kibooId" +
+      "Smartphone Premium,Teléfono inteligente de última generación,85999,Electrónicos,https://imagen.com,749.99,15,Blanco;Gris,El mejor celular en 2025; La mejor camara\n,123" +
+      "Laptop Gaming,Laptop para gaming con procesador Intel i7,129999,Computadoras,https://imagen1.com,,8,Rojo,La mejor duración de bateria; Los mejores componentes,111"
 
     const blob = new Blob([csvContent], { type: "text/csv" })
     const url = window.URL.createObjectURL(blob)
@@ -152,6 +152,7 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
                           <div>Colores: {row.colors ?? row.colors ?? ""}</div>
                           <div>Caracteristicas: {row.features ?? row.Caracteristicas ?? ""}</div>
                           <div>Moneda: {row.currency ?? row.moneda ?? ""}</div>
+                          <div>KibooID: {row.kibooId ?? row.kibooID ?? ""}</div>
                         </div>
                       </div>
                     ))}
@@ -175,6 +176,7 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
               <li>• Colores (opcional, por defecto ninguno)</li>
               <li>• Caracteristicas (opcional, por defecto ninguno)</li>
               <li>• Moneda (opcional, por defecto ARS)</li>
+              <li>• Kiboo ID (opcional)</li>
             </ul>
             <Button variant="outline" size="sm" onClick={downloadTemplate} className="mt-3 w-full">
               <Download className="h-3 w-3 mr-2" />

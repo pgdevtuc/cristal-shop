@@ -3,7 +3,7 @@ import connectDB from "@/lib/database"
 import Product from "@/lib/models/product"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { features } from "process"
+
 
 /**
  * Simple CSV parser that handles quoted fields and commas inside quotes.
@@ -87,13 +87,18 @@ function normalizeHeader(h: string) {
   if (s.includes("imagen") || s.includes("url") || s.includes("image")) return "image"
   if (s.includes("stock")) return "stock"
   if (s.includes("Colores") || s.includes("colores") || s.includes("Colors") || s.includes("colors")) return "colors"
-  if (s.includes("Caracteristicas") || s.includes("caracteristicas")) return "features"
-  if (s.includes("Moneda") || s.includes("moneda")) return "currency"
+  if (s.includes("caracteristicas")) return "features"
+  if (s.includes("moneda")) return "currency"
+  if (s.includes('kibooid')) return "kibooId"
+
   return s.replace(/\s+/g, "_")
 }
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session || (session.user as any).role !== "admin")
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     const url = new URL(req.url)
     const action = url.searchParams.get("action") || "preview"
 
@@ -138,19 +143,15 @@ export async function POST(req: Request) {
             obj.color ||
             "",
           features: obj.features || obj.caracteristicas || obj.Caracteristicas || "",
-          currency: obj.currency || obj.moneda || obj.Moneda || ""
+          currency: obj.currency || obj.moneda || obj.Moneda || "",
+          kibooId: obj.kibooId || obj.kibooID || ""
         }
       })
-
       return NextResponse.json({ items })
     }
 
     // action=save -> expect JSON { items: [...] } and authenticated admin
     if (action === "save") {
-      const session = await getServerSession(authOptions)
-      if (!session || (session.user as any).role !== "admin") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      }
 
       const body = await req.json()
       const items = Array.isArray(body.items) ? body.items : []
@@ -201,6 +202,7 @@ export async function POST(req: Request) {
               .filter(Boolean)
             : []
         const currency = row.currency ?? row.moneda ?? row.Moneda ?? ""
+        const kibooId = row.kibooId ?? row.kibooID ?? ""
 
         if (!name || Number.isNaN(price)) {
           errors.push({ row: i + 2, reason: "Faltan campos requeridos o precio inválido", data: row })
@@ -217,7 +219,8 @@ export async function POST(req: Request) {
           price: Number(price),
           colors: colores,
           features,
-          currency: currency?.toLowerCase() === "pesos" ? "ARS" : "USD"
+          currency: currency?.toLowerCase() === "pesos" ? "ARS" : "USD",
+          kibooId
         })
       }
 

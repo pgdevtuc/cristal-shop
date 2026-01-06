@@ -6,7 +6,7 @@ import { Plus, Upload, Download } from "lucide-react";
 import { ProductForm } from "./product-form";
 import { ProductsContainer } from "@/components/admin/ProductContainer";
 import { ImportDialog } from "./import-dialog";
-import type {  Product } from "@/types/product";
+import type { Product } from "@/types/product";
 import { toast } from "sonner"
 
 export function ProductManagement() {
@@ -28,9 +28,19 @@ export function ProductManagement() {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       console.error("Error deleting product:", data?.error || res.statusText);
-      toast.error("Error al eliminar el producto", {position:"top-center",style:{color:"red"},duration:3000});
-    }else{
-      toast.success("Producto eliminado", {position:"top-center",style:{color:"green"},duration:3000});
+      toast.error("Error al eliminar el producto", { position: "top-center", style: { color: "red" }, duration: 3000 });
+    } else {
+      await fetch(process.env.NEXT_PUBLIC_URL_WEBHOOK ?? "", {
+        headers: {
+          "content-type": "application/json"
+        },
+        method: "POST",
+        body: JSON.stringify({
+          action: "DELETE",
+          id: productId
+        })
+      })
+      toast.success("Producto eliminado", { position: "top-center", style: { color: "green" }, duration: 3000 });
     }
   };
 
@@ -66,7 +76,7 @@ export function ProductManagement() {
       {showForm && (
         <ProductForm
           product={editingProduct}
-          onSave={() => { setShowForm(false); setEditingProduct(null); bumpRefresh();  }}
+          onSave={() => { setShowForm(false); setEditingProduct(null); bumpRefresh(); }}
           onCancel={() => { setShowForm(false); setEditingProduct(null); }}
         />
       )}
