@@ -147,6 +147,12 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
         method: product ? "PUT" : "POST",
         body: payload,
       })
+
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.error || "Error al guardar el producto")
+      }
       const data=await response.json();
       await fetch(process.env.NEXT_PUBLIC_URL_WEBHOOK ?? "",{
         headers:{
@@ -158,11 +164,6 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
           id: product ? product.id : data?._id
         })
       })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null)
-        throw new Error(errorData?.error || "Error al guardar el producto")
-      }
 
       toast.success(product ? "Producto actualizado" : "Producto creado", {
         position: "top-center",
