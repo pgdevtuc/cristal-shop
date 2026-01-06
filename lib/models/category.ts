@@ -27,6 +27,5 @@ const CategorySchema = new Schema<ICategory>(
   },
 )
 
-CategorySchema.index({ name: 1 }, { unique: true })
 
 export default mongoose.models.Category || mongoose.model<ICategory>("Category", CategorySchema, "categories")

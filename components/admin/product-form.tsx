@@ -14,7 +14,7 @@ import { toast } from "sonner"
 import { Product } from "@/types/product"
 import { formatPrice } from "@/lib/formatPrice"
 import { cn } from "@/lib/utils"
-
+import { compressImage } from "@/lib/compressImage"
 interface ProductFormProps {
   product?: Product | null
   onSave: () => void
@@ -62,7 +62,7 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
   const sanitizedManualImages = (formData.manualImages || []).map((value: string) => value.trim()).filter(Boolean)
   const totalImagesCount = sanitizedManualImages.length + imageFiles.length
 
-  const handleFilesSelected = (files: File[]) => {
+  const handleFilesSelected = async (files: File[]) => {
     if (!files.length) return
 
     const validImages = files.filter((file) => file.type.startsWith("image/"))
@@ -75,7 +75,19 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
       return
     }
 
-    setImageFiles((prev) => [...prev, ...validImages])
+    const compressedImages: File[] = []
+
+    for (const file of validImages) {
+      const compressed = await compressImage(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1600,
+        quality: 0.8,
+      })
+      compressedImages.push(compressed)
+    }
+
+    setImageFiles((prev) => [...prev, ...compressedImages])
+
     toast.success(`Se agregaron ${validImages.length} imagen(es) para subir`, {
       position: "top-center",
       style: { color: "green" },
@@ -148,20 +160,20 @@ export function ProductForm({ product, onSave, onCancel }: ProductFormProps) {
         body: payload,
       })
       console.log(fetch)
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null)
         throw new Error(errorData?.error || "Error al guardar el producto")
       }
-      const data=await response.json();
-      console.log("data",data)
-      await fetch(process.env.NEXT_PUBLIC_URL_WEBHOOK ?? "",{
-        headers:{
-          "content-type":"application/json"
+      const data = await response.json();
+      console.log("data", data)
+      await fetch(process.env.NEXT_PUBLIC_URL_WEBHOOK ?? "", {
+        headers: {
+          "content-type": "application/json"
         },
-        method:"POST",
-        body:JSON.stringify({
-          action:product? "PUT":"POST",
+        method: "POST",
+        body: JSON.stringify({
+          action: product ? "PUT" : "POST",
           id: product ? product.id : data?._id
         })
       })
