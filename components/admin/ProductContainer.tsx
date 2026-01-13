@@ -49,6 +49,7 @@ export function ProductsContainer({
   const [loading, setLoading] = useState(false);
   const [stockFilter, setStockFilter] = useState<string>(searchParams.get("filter") || "all");
   const [viewMode, setViewMode] = useState<ViewMode>((searchParams.get("view") as ViewMode) || "table");
+  const [category, setCategory] = useState<string>(searchParams.get("category") || "");
 
   const debouncedQuery = useDebounce(q, 1000);
 
@@ -57,24 +58,34 @@ export function ProductsContainer({
   const [totalPages, setTotalPages] = useState(1);
   const [summary, setSummary] = useState<Summary>({ inStock: 0, outOfStock: 0, discounted: 0 });
 
+  // categories list for the category filter
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+
+  // jump page input state
+  const [jumpPage, setJumpPage] = useState<string>(String(page));
+
   // Función para actualizar la URL
-  const updateURL = (newPage: number, newQuery: string, newFilter: string, newView: ViewMode) => {
+  const updateURL = (newPage: number, newQuery: string, newFilter: string, newView: ViewMode, newCategory: string) => {
     const params = new URLSearchParams();
-    
+
     if (newQuery) params.set("q", newQuery);
     if (newPage > 1) params.set("page", String(newPage));
     if (newFilter && newFilter !== "all") params.set("filter", newFilter);
     if (newView !== "grid") params.set("view", newView);
+    if (newCategory) params.set("category", newCategory);
 
     const newURL = params.toString() ? `?${params.toString()}` : window.location.pathname;
     router.push(newURL, { scroll: false });
   };
 
-  async function fetchPage(p = page, query = debouncedQuery) {
+  async function fetchPage(p = page, query = debouncedQuery, cat = category) {
     setLoading(true);
     try {
+      const qParam = encodeURIComponent(query);
+      const catParam = encodeURIComponent(cat || "");
+
       const res = await fetch(
-        `/api/products/admin?page=${p}&limit=${limit}&q=${encodeURIComponent(query)}&filter=${encodeURIComponent(stockFilter)}`
+        `/api/products/admin?page=${p}&limit=${limit}&q=${qParam}&filter=${encodeURIComponent(stockFilter)}${catParam ? `&category=${catParam}` : ""}`
       );
       const data = await res.json();
 
@@ -87,22 +98,56 @@ export function ProductsContainer({
     }
   }
 
-  // Cuando cambia el query o filtro, resetear a página 1
+  // load categories for the select
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/categories`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!mounted) return;
+        console.log(data.categories)
+        setCategories(data.categories || []);
+      } catch (e) {
+        console.error("Error fetching categories", e);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Cuando cambia el query, filtro o categoria, resetear a página 1
   useEffect(() => {
     if (page !== 1) {
       setPage(1);
+      setJumpPage("1");
     }
-  }, [debouncedQuery, stockFilter]);
+  }, [debouncedQuery, stockFilter, category]);
 
   // Actualizar URL cuando cambian los filtros
   useEffect(() => {
-    updateURL(page, debouncedQuery, stockFilter, viewMode);
-  }, [page, debouncedQuery, stockFilter, viewMode]);
+    updateURL(page, debouncedQuery, stockFilter, viewMode, category);
+  }, [page, debouncedQuery, stockFilter, viewMode, category]);
 
   // Fetch cuando cambian los parámetros
   useEffect(() => {
-    fetchPage(page, debouncedQuery);
-  }, [page, debouncedQuery, stockFilter, refreshToken]);
+    fetchPage(page, debouncedQuery, category);
+  }, [page, debouncedQuery, stockFilter, category, refreshToken]);
+
+  // keep jumpPage input synced with page
+  useEffect(() => {
+    setJumpPage(String(page));
+  }, [page]);
+
+  const handleJump = (value?: string) => {
+    const v = value ?? jumpPage;
+    const n = Number(v);
+    if (Number.isNaN(n)) return;
+    const target = Math.max(1, Math.min(totalPages, Math.floor(n)));
+    setPage(target);
+  };
 
   return (
     <div className="space-y-6">
@@ -125,6 +170,22 @@ export function ProductsContainer({
             <SelectItem value="outOfStock">Agotados</SelectItem>
             <SelectItem value="discounted">Con descuento</SelectItem>
             <SelectItem value="lowStock">Por agotarse (1-2)</SelectItem>
+            <SelectItem value="withoutImage">Sin Imagen</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* category select */}
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger className="w-56">
+            <SelectValue placeholder="Todas las categorías" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={c.name}>
+                {c.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -230,6 +291,25 @@ export function ProductsContainer({
           <span className="px-2 text-sm">
             {page} / {totalPages}
           </span>
+
+          {/* jump to page input */}
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleJump();
+              }}
+              className="w-20 text-sm"
+            />
+            <Button size="sm" variant="outline" onClick={() => handleJump()}>
+              Ir
+            </Button>
+          </div>
+
           <Button
             variant="outline"
             size="sm"

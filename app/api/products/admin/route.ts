@@ -17,7 +17,7 @@ export async function GET(req: Request) {
         const category = (searchParams.get("category") ?? "").trim()
         const id = (searchParams.get("id") ?? "").trim()
         const priceFilter = (searchParams.get("priceFilter") ?? "").trim()
-        const stockFilter = (searchParams.get("filter") ?? "").trim()
+        const filterParam = (searchParams.get("filter") ?? "").trim()
 
         await connectDB()
         const dolar = await dolarReference.findOne({}).lean()
@@ -28,21 +28,26 @@ export async function GET(req: Request) {
             }
             : {}
 
-        if (category) filter.category = category.toUpperCase();
+        if (category && category !== 'all') filter.category = category.toUpperCase();
 
         if (id) filter._id = { $ne: id }
 
 
         // Stock/discount filters
-        if (stockFilter === "inStock") {
+        if (filterParam === "inStock") {
             filter.stock = { $gt: 0 }
-        } else if (stockFilter === "outOfStock") {
+        } else if (filterParam === "outOfStock") {
             filter.stock = 0
-        } else if (stockFilter === "discounted") {
+        } else if (filterParam === "discounted") {
             filter.salePrice = { $ne: null, $gt: 0 }
             filter.$expr = { $lt: ["$salePrice", "$price"] }
-        } else if (stockFilter === "lowStock") {
+        } else if (filterParam === "lowStock") {
             filter.stock = { $gte: 1, $lt: 3 }
+        } else if (filterParam === "withoutImage") {
+            filter.$or = [
+                { image: { $exists: false } },
+                { image: { $size: 0 } }
+            ]
         }
 
         const total = await Product.countDocuments(filter)
