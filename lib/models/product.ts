@@ -11,7 +11,8 @@ export interface IProduct extends Document {
   price: number
   salePrice: number
   currency: "ARS" | "USD"
-  kibooId?:string
+  kibooId?: string
+  variantId?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -42,17 +43,17 @@ const ProductSchema = new Schema<IProduct>(
     },
     category: {
       type: String,
-      default:"",
+      default: "",
       trim: true,
     },
     description: {
       type: String,
-      default:"",
+      default: "",
       trim: true,
     },
     price: {
       type: Number,
-      default:0,
+      default: 0,
       min: 0,
     },
     salePrice: {
@@ -60,14 +61,17 @@ const ProductSchema = new Schema<IProduct>(
       default: 0,
       min: 0,
     },
-    currency:{
-      type:String,
-      default: "ARS"
+    currency: {
+      type: String,
+      default: "ARS",
     },
-    kibooId:{
-      type:String,
-      
-    }
+    kibooId: {
+      type: String,
+    },
+    variantId: {
+      type: String,
+      index: true,
+    },
   },
   {
     timestamps: true,

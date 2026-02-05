@@ -107,7 +107,6 @@ export function ProductsContainer({
         if (!res.ok) return;
         const data = await res.json();
         if (!mounted) return;
-        console.log(data.categories)
         setCategories(data.categories || []);
       } catch (e) {
         console.error("Error fetching categories", e);
