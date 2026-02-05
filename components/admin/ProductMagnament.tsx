@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Upload, Download } from "lucide-react";
+import { Plus, Upload, Pencil } from "lucide-react";
 import { ProductForm } from "./product-form";
 import { ProductsContainer } from "@/components/admin/ProductContainer";
 import { ImportDialog } from "./import-dialog";
+import { MassEditDialog } from "./mass-edit-dialog";
 import type { Product } from "@/types/product";
 import { toast } from "sonner"
 
 export function ProductManagement() {
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showMassEdit, setShowMassEdit] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
@@ -58,6 +60,10 @@ export function ProductManagement() {
             <Upload className="h-4 w-4 mr-2" />
             Importar
           </Button>
+          <Button variant="outline" onClick={() => setShowMassEdit(true)}>
+            <Pencil className="h-4 w-4 mr-2" />
+            Edicion Masiva
+          </Button>
           <Button onClick={() => { setEditingProduct(null); setShowForm(true); }}>
             <Plus className="h-4 w-4 mr-2" />
             Agregar Producto
@@ -85,6 +91,12 @@ export function ProductManagement() {
         <ImportDialog
           onClose={() => setShowImport(false)}
           onImportComplete={() => { setShowImport(false); bumpRefresh(); }}
+        />
+      )}
+      {showMassEdit && (
+        <MassEditDialog
+          onClose={() => setShowMassEdit(false)}
+          onComplete={() => { setShowMassEdit(false); bumpRefresh(); }}
         />
       )}
     </div>
