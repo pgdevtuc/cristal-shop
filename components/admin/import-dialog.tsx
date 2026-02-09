@@ -98,9 +98,9 @@ export function ImportDialog({ onClose, onImportComplete }: ImportDialogProps) {
 
   const downloadTemplate = () => {
     const csvContent =
-      "Nombre,Descripción,Precio,Categoría,URL de Imagen,Precio Oferta,Stock,Colores,Caracteristicas\n,kibooId" +
-      "Smartphone Premium,Teléfono inteligente de última generación,85999,Electrónicos,https://imagen.com,749.99,15,Blanco;Gris,El mejor celular en 2025; La mejor camara\n,123" +
-      "Laptop Gaming,Laptop para gaming con procesador Intel i7,129999,Computadoras,https://imagen1.com,,8,Rojo,La mejor duración de bateria; Los mejores componentes,111"
+      "Nombre,Descripción,Precio,Categoría,URL de Imagen,Precio Oferta,Stock,Colores,Caracteristicas,Moneda,kibooId\n" +
+      "Smartphone Premium,Teléfono inteligente de última generación,85999,Electrónicos,https://imagen.com,749.99,15,Blanco;Gris,El mejor celular en 2025; La mejor camara,Pesos,123\n" +
+      "Laptop Gaming,Laptop para gaming con procesador Intel i7,129999,Computadoras,https://imagen1.com,,8,Rojo,La mejor duración de bateria; Los mejores componentes,Dolar,111"
 
     const blob = new Blob([csvContent], { type: "text/csv" })
     const url = window.URL.createObjectURL(blob)
